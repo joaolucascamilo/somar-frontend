@@ -1,0 +1,412 @@
+/* ============================================================
+   SOMAR — Sistema de Ocorrências e Monitoramento de Áreas do Recife
+   Tokens de design
+
+   Conceito: o visual remete a sinalização viária e fichas de protocolo
+   municipal — não um SaaS genérico. Cinza-asfalto como base, amarelo de
+   atenção/sinalização como acento, com cards que imitam uma "ficha"
+   carimbada (cantos cortados, numeração tipo selo).
+   ============================================================ */
+
+:root {
+  /* Paleta: asfalto + sinalização */
+  --grafite-950: #14171a;
+  --grafite-900: #1d2125;
+  --grafite-800: #2a2f35;
+  --grafite-600: #4b535c;
+  --grafite-400: #828d97;
+  --osso-100: #f3efe6;
+  --osso-50: #faf8f2;
+  --amarelo-sinal: #f2b705;
+  --amarelo-sinal-escuro: #c99000;
+  --verde-resolvido: #2e8b57;
+  --vermelho-critico: #c0392b;
+  --azul-info: #2f6690;
+
+  /* Tipografia */
+  --fonte-display: 'Oswald', 'Arial Narrow', sans-serif; /* condensada, tipo placa */
+  --fonte-corpo: 'Source Sans 3', 'Segoe UI', sans-serif;
+  --fonte-mono: 'JetBrains Mono', 'Courier New', monospace; /* códigos/IDs/dados */
+
+  --raio-card: 4px;
+  --sombra-card: 0 1px 2px rgba(20, 23, 26, 0.08), 0 2px 8px rgba(20, 23, 26, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--fonte-corpo);
+  background: var(--osso-50);
+  color: var(--grafite-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--fonte-display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  color: var(--grafite-950);
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+/* ---------- Layout utilitário ---------- */
+.container {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--amarelo-sinal);
+  color: var(--grafite-950);
+  padding: 8px 16px;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 16px;
+  top: 16px;
+}
+
+/* ---------- Barra superior tipo "faixa de obra" ---------- */
+.faixa-topo {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--grafite-950) 0px,
+    var(--grafite-950) 14px,
+    var(--amarelo-sinal) 14px,
+    var(--amarelo-sinal) 28px
+  );
+  height: 6px;
+  width: 100%;
+}
+
+/* ---------- Header / navegação ---------- */
+.header {
+  background: var(--grafite-950);
+  color: var(--osso-100);
+  padding: 18px 0;
+}
+
+.header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.marca {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.marca .selo {
+  font-family: var(--fonte-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: var(--amarelo-sinal);
+  border: 1px solid var(--amarelo-sinal);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.marca .nome {
+  font-family: var(--fonte-display);
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--osso-50);
+}
+
+.nav-links {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  font-size: 0.92rem;
+}
+
+.nav-links a {
+  color: var(--grafite-400);
+  transition: color 0.15s ease;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+}
+.nav-links a:hover,
+.nav-links a:focus-visible {
+  color: var(--osso-50);
+  border-bottom-color: var(--amarelo-sinal);
+}
+.nav-links a.ativo {
+  color: var(--amarelo-sinal);
+  border-bottom-color: var(--amarelo-sinal);
+}
+
+/* ---------- Botões ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--fonte-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: var(--raio-card);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:focus-visible {
+  outline: 3px solid var(--amarelo-sinal);
+  outline-offset: 2px;
+}
+
+.btn-primario {
+  background: var(--amarelo-sinal);
+  color: var(--grafite-950);
+}
+.btn-primario:hover {
+  background: var(--amarelo-sinal-escuro);
+}
+
+.btn-secundario {
+  background: transparent;
+  border-color: var(--osso-100);
+  color: var(--osso-100);
+}
+.btn-secundario:hover {
+  background: rgba(243, 239, 230, 0.1);
+}
+
+.btn-escuro {
+  background: var(--grafite-950);
+  color: var(--osso-50);
+}
+.btn-escuro:hover {
+  background: var(--grafite-800);
+}
+
+.btn-perigo {
+  background: var(--vermelho-critico);
+  color: var(--osso-50);
+}
+.btn-perigo:hover {
+  background: #a53125;
+}
+
+.btn-bloco {
+  width: 100%;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Cards tipo "ficha de protocolo" ---------- */
+.ficha {
+  background: #fff;
+  border: 1px solid #e3ddd0;
+  border-radius: var(--raio-card);
+  box-shadow: var(--sombra-card);
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(
+    0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)
+  );
+}
+
+.ficha::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  background: var(--amarelo-sinal);
+}
+
+.ficha-corpo {
+  padding: 20px 22px 20px 26px;
+}
+
+.ficha-id {
+  font-family: var(--fonte-mono);
+  font-size: 0.75rem;
+  color: var(--grafite-400);
+  letter-spacing: 0.05em;
+}
+
+/* ---------- Badges de status / prioridade ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--fonte-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------- Formulários ---------- */
+.campo {
+  margin-bottom: 18px;
+}
+
+.campo label {
+  display: block;
+  font-family: var(--fonte-display);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--grafite-800);
+  margin-bottom: 6px;
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid #d8d2c2;
+  border-radius: var(--raio-card);
+  background: #fff;
+  color: var(--grafite-950);
+  transition: border-color 0.15s ease;
+}
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: var(--amarelo-sinal-escuro);
+  box-shadow: 0 0 0 3px rgba(242, 183, 5, 0.25);
+}
+
+.campo-linha {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.erro-msg {
+  color: var(--vermelho-critico);
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
+.aviso-form {
+  background: #fdecea;
+  border: 1px solid var(--vermelho-critico);
+  color: #7a231a;
+  padding: 12px 16px;
+  border-radius: var(--raio-card);
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+
+.sucesso-form {
+  background: #e8f5e9;
+  border: 1px solid var(--verde-resolvido);
+  color: #1b5e20;
+  padding: 12px 16px;
+  border-radius: var(--raio-card);
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+
+/* ---------- Estado vazio ---------- */
+.estado-vazio {
+  text-align: center;
+  padding: 64px 24px;
+  color: var(--grafite-600);
+}
+.estado-vazio .icone {
+  font-size: 2.4rem;
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* ---------- Loading ---------- */
+.carregando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--grafite-600);
+  font-family: var(--fonte-mono);
+  font-size: 0.85rem;
+  padding: 24px 0;
+}
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #d8d2c2;
+  border-top-color: var(--amarelo-sinal-escuro);
+  border-radius: 50%;
+  animation: girar 0.7s linear infinite;
+}
+@keyframes girar {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Footer ---------- */
+.footer {
+  background: var(--grafite-950);
+  color: var(--grafite-400);
+  padding: 32px 0;
+  margin-top: 64px;
+  font-size: 0.85rem;
+}
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 768px) {
+  .nav-links {
+    display: none;
+  }
+  .campo-linha {
+    grid-template-columns: 1fr;
+  }
+  .header .container {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

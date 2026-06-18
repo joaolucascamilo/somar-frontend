@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meu perfil — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .area-perfil {
+      padding: 48px 0 64px;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    .cartao-resumo {
+      background: var(--grafite-950);
+      color: #fff;
+      border-radius: 6px;
+      padding: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+    .cartao-resumo .nome-usuario {
+      font-size: 1.4rem;
+      font-family: var(--fonte-display);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .cartao-resumo .email-usuario {
+      color: var(--grafite-400);
+      font-size: 0.88rem;
+    }
+    .pontuacao-grande {
+      text-align: right;
+    }
+    .pontuacao-grande .numero {
+      font-family: var(--fonte-display);
+      font-size: 2.6rem;
+      color: var(--amarelo-sinal);
+      line-height: 1;
+    }
+    .pontuacao-grande .legenda {
+      font-family: var(--fonte-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--grafite-400);
+    }
+
+    .titulo-secao {
+      font-size: 1rem;
+      margin-bottom: 14px;
+    }
+
+    .historico-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .historico-item .desc {
+      font-size: 0.92rem;
+    }
+    .historico-item .data {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      color: var(--grafite-400);
+      margin-top: 2px;
+    }
+    .historico-item .pontos {
+      font-family: var(--fonte-mono);
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--verde-resolvido);
+      white-space: nowrap;
+    }
+    .historico-item .pontos.negativo {
+      color: var(--vermelho-critico);
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <main class="container area-perfil">
+    <div id="conteudo-perfil">
+      <div class="carregando"><span class="spinner"></span> Carregando perfil...</div>
+    </div>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/enums.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('perfil');
+    Auth.protegerPagina(['ROLE_CIDADAO']);
+
+    async function carregarPerfil() {
+      const container = document.getElementById('conteudo-perfil');
+      try {
+        const perfil = await Api.get(`${CONFIG.USER_SERVICE_URL}/api/usuarios/meu-perfil`);
+
+        // Mantém o cache local de usuário atualizado (nome usado na navbar)
+        Auth.salvarSessao(Auth.getToken(), perfil);
+
+        const historico = perfil.historico || [];
+        const historicoHtml = historico.length > 0
+          ? historico.map(h => `
+              <div class="historico-item">
+                <div>
+                  <div class="desc">${h.descricao}</div>
+                  <div class="data">${formatarData(h.dataEvento)}</div>
+                </div>
+                <div class="pontos ${h.pontos < 0 ? 'negativo' : ''}">${h.pontos > 0 ? '+' : ''}${h.pontos} pts</div>
+              </div>
+            `).join('')
+          : `<div class="estado-vazio"><span class="icone">🏅</span>Nenhum evento de pontuação ainda.</div>`;
+
+        container.innerHTML = `
+          <div class="cartao-resumo">
+            <div>
+              <div class="nome-usuario">${perfil.nome}</div>
+              <div class="email-usuario">${perfil.email}</div>
+            </div>
+            <div class="pontuacao-grande">
+              <div class="numero">${perfil.pontosReputacao ?? 0}</div>
+              <div class="legenda">Pontos de reputação</div>
+            </div>
+          </div>
+
+          <h3 class="titulo-secao">Histórico de gamificação</h3>
+          ${historicoHtml}
+        `;
+      } catch (erro) {
+        console.error(erro);
+        if (erro.status === 401) {
+          container.innerHTML = `<div class="aviso-form">Sua sessão expirou. Faça login novamente.</div>`;
+          setTimeout(() => Auth.logout(), 1500);
+        } else {
+          container.innerHTML = `<div class="aviso-form">Não foi possível carregar seu perfil. ${erro.message || ''}</div>`;
+        }
+      }
+    }
+
+    carregarPerfil();
+  </script>
+</body>
+</html>

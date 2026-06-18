@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Detalhe da ocorrência — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .area-detalhe {
+      padding: 48px 0 64px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .voltar {
+      font-family: var(--fonte-mono);
+      font-size: 0.82rem;
+      color: var(--grafite-600);
+      margin-bottom: 24px;
+      display: inline-block;
+    }
+    .cabeca-detalhe {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .cabeca-detalhe h1 {
+      font-size: 1.6rem;
+      text-transform: none;
+      font-family: var(--fonte-corpo);
+      font-weight: 700;
+    }
+    .protocolo-num {
+      font-family: var(--fonte-mono);
+      font-size: 0.85rem;
+      color: var(--grafite-400);
+      margin-bottom: 24px;
+    }
+    .grade-detalhe {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 28px 0;
+    }
+    .bloco-info {
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      padding: 14px 16px;
+    }
+    .bloco-info .rotulo {
+      font-family: var(--fonte-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--grafite-400);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .bloco-info .valor {
+      font-weight: 600;
+    }
+    .galeria-fotos {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .galeria-fotos img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 4px;
+      border: 1px solid #e3ddd0;
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <main class="container area-detalhe">
+    <a href="/public/mapa.html" class="voltar">&larr; Voltar ao mapa</a>
+
+    <div id="conteudo-detalhe">
+      <div class="carregando"><span class="spinner"></span> Carregando ocorrência...</div>
+    </div>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/enums.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar();
+
+    const params = new URLSearchParams(window.location.search);
+    const ocorrenciaId = params.get('id');
+    const container = document.getElementById('conteudo-detalhe');
+
+    async function carregarDetalhe() {
+      if (!ocorrenciaId) {
+        container.innerHTML = `<div class="aviso-form">ID da ocorrência não informado na URL.</div>`;
+        return;
+      }
+
+      try {
+        const oc = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/${ocorrenciaId}`, false);
+
+        const tipo = TipoOcorrencia[oc.tipoOcorrencia] || { label: 'Desconhecido', icone: '📌' };
+        const status = StatusOcorrencia[oc.status] || { label: 'Desconhecido', cor: '#999' };
+        const prioridade = NivelPrioridade[oc.nivelPrioridade] || { label: oc.nivelPrioridade || '—', cor: '#999' };
+        const endereco = oc.endereco
+          ? `${oc.endereco.rua}, ${oc.endereco.numero} — ${oc.endereco.bairro}, ${oc.endereco.cidade}/${oc.endereco.estado}`
+          : 'Endereço não informado';
+
+        const fotosHtml = (oc.fotos && oc.fotos.length > 0)
+          ? `<div class="galeria-fotos">${oc.fotos.map(f => `<img src="${f.url}" alt="Foto da ocorrência" loading="lazy">`).join('')}</div>`
+          : `<p style="color: var(--grafite-600); font-size: 0.9rem;">Nenhuma foto anexada.</p>`;
+
+        container.innerHTML = `
+          <div class="cabeca-detalhe">
+            <h1>${tipo.icone} ${tipo.label}</h1>
+            <span class="badge" style="background:${status.cor}1A; color:${status.cor};">${status.label}</span>
+          </div>
+          <div class="protocolo-num">Protocolo #${String(oc.id).padStart(5, '0')} · Registrado em ${formatarData(oc.data)}</div>
+
+          <p>${endereco}</p>
+
+          <div class="grade-detalhe">
+            <div class="bloco-info">
+              <span class="rotulo">Prioridade</span>
+              <span class="valor" style="color: ${prioridade.cor};">${prioridade.label}</span>
+            </div>
+            <div class="bloco-info">
+              <span class="rotulo">Status atual</span>
+              <span class="valor">${status.label}</span>
+            </div>
+            <div class="bloco-info">
+              <span class="rotulo">Protocolo</span>
+              <span class="valor">#${String(oc.id).padStart(5, '0')}</span>
+            </div>
+          </div>
+
+          <h3 style="font-size: 0.95rem; margin-bottom: 8px;">Fotos</h3>
+          ${fotosHtml}
+        `;
+      } catch (erro) {
+        console.error(erro);
+        if (erro.status === 404) {
+          container.innerHTML = `<div class="aviso-form">Ocorrência não encontrada.</div>`;
+        } else {
+          container.innerHTML = `<div class="aviso-form">Não foi possível carregar a ocorrência. ${erro.message || ''}</div>`;
+        }
+      }
+    }
+
+    carregarDetalhe();
+  </script>
+</body>
+</html>

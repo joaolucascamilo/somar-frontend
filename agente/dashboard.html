@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .topo-pagina {
+      padding: 40px 0 24px;
+      border-bottom: 1px solid #e3ddd0;
+    }
+    .topo-pagina .eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .area-dashboard {
+      padding: 32px 0 64px;
+    }
+
+    .grade-indicadores {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+    .cartao-indicador {
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cartao-indicador::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--cor-indicador, var(--amarelo-sinal));
+    }
+    .cartao-indicador .rotulo {
+      font-family: var(--fonte-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--grafite-400);
+      margin-bottom: 6px;
+      display: block;
+    }
+    .cartao-indicador .numero {
+      font-family: var(--fonte-display);
+      font-size: 2rem;
+      color: var(--grafite-950);
+    }
+
+    .secao-painel {
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .secao-painel h3 {
+      font-size: 0.95rem;
+      margin-bottom: 16px;
+    }
+
+    .linha-ranking {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 0;
+      border-bottom: 1px solid #f0ece1;
+      font-size: 0.9rem;
+    }
+    .linha-ranking:last-child { border-bottom: none; }
+    .linha-ranking .endereco-rank {
+      color: var(--grafite-600);
+      font-size: 0.82rem;
+    }
+
+    @media (max-width: 900px) {
+      .grade-indicadores { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <div class="topo-pagina">
+    <div class="container">
+      <span class="eyebrow">Visão administrativa</span>
+      <h1>Painel de fiscalização</h1>
+    </div>
+  </div>
+
+  <main class="container area-dashboard">
+    <div class="grade-indicadores" id="grade-indicadores">
+      <div class="carregando"><span class="spinner"></span> Calculando indicadores...</div>
+    </div>
+
+    <div class="secao-painel">
+      <h3>Ocorrências críticas em aberto</h3>
+      <div id="ranking-criticas">
+        <div class="carregando"><span class="spinner"></span> Carregando ranking...</div>
+      </div>
+    </div>
+
+    <a href="/agente/ocorrencias.html" class="btn btn-primario">Ver todas as ocorrências</a>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/enums.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('dashboard');
+    Auth.protegerPagina(['ROLE_AGENTE_PREFEITURA']);
+
+    async function carregarIndicadores() {
+      const grade = document.getElementById('grade-indicadores');
+      try {
+        const ocorrencias = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias`);
+
+        const total = ocorrencias.length;
+        const registradas = ocorrencias.filter(o => o.status === 1).length;
+        const emProcedimento = ocorrencias.filter(o => o.status === 4).length;
+        const resolvidas = ocorrencias.filter(o => o.status === 3).length;
+
+        grade.innerHTML = `
+          <div class="cartao-indicador" style="--cor-indicador: var(--azul-info);">
+            <span class="rotulo">Total de ocorrências</span>
+            <div class="numero">${total}</div>
+          </div>
+          <div class="cartao-indicador" style="--cor-indicador: var(--amarelo-sinal-escuro);">
+            <span class="rotulo">Aguardando ação</span>
+            <div class="numero">${registradas}</div>
+          </div>
+          <div class="cartao-indicador" style="--cor-indicador: #F59E0B;">
+            <span class="rotulo">Em procedimento</span>
+            <div class="numero">${emProcedimento}</div>
+          </div>
+          <div class="cartao-indicador" style="--cor-indicador: var(--verde-resolvido);">
+            <span class="rotulo">Resolvidas</span>
+            <div class="numero">${resolvidas}</div>
+          </div>
+        `;
+
+        // Ranking simples: ocorrências não resolvidas, com nível mapeado
+        // como CRITICA ou ALTA, mostradas em destaque no painel.
+        const criticas = ocorrencias
+          .filter(o => o.status !== 3 && o.status !== 2 && (o.nivelPrioridade === 'CRITICA' || o.nivelPrioridade === 'ALTA'))
+          .slice(0, 8);
+
+        const rankingContainer = document.getElementById('ranking-criticas');
+        if (criticas.length === 0) {
+          rankingContainer.innerHTML = `<div class="estado-vazio"><span class="icone">✅</span>Nenhuma ocorrência crítica em aberto.</div>`;
+        } else {
+          rankingContainer.innerHTML = criticas.map(oc => {
+            const tipo = TipoOcorrencia[oc.tipoOcorrencia] || { label: 'Desconhecido', icone: '📌' };
+            const prioridade = NivelPrioridade[oc.nivelPrioridade] || { label: oc.nivelPrioridade, cor: '#999' };
+            const endereco = oc.endereco ? `${oc.endereco.rua}, ${oc.endereco.bairro}` : '';
+            return `
+              <div class="linha-ranking">
+                <div>
+                  <strong>${tipo.icone} ${tipo.label}</strong>
+                  <div class="endereco-rank">${endereco}</div>
+                </div>
+                <span class="badge" style="background:${prioridade.cor}1A; color:${prioridade.cor};">${prioridade.label}</span>
+              </div>
+            `;
+          }).join('');
+        }
+
+      } catch (erro) {
+        console.error(erro);
+        grade.innerHTML = `<div class="aviso-form">Não foi possível carregar os indicadores. ${erro.message || ''}</div>`;
+        document.getElementById('ranking-criticas').innerHTML = '';
+      }
+    }
+
+    carregarIndicadores();
+  </script>
+</body>
+</html>

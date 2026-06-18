@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Criar conta — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .tela-auth {
+      min-height: calc(100vh - 200px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+    }
+    .cartao-auth {
+      width: 100%;
+      max-width: 440px;
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 6px;
+      padding: 40px 36px;
+      box-shadow: var(--sombra-card);
+    }
+    .cartao-auth .eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .cartao-auth h1 {
+      font-size: 1.6rem;
+      margin-bottom: 26px;
+    }
+    .rodape-auth {
+      margin-top: 22px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--grafite-600);
+    }
+    .rodape-auth a {
+      color: var(--amarelo-sinal-escuro);
+      font-weight: 600;
+    }
+    .dica-senha {
+      font-size: 0.78rem;
+      color: var(--grafite-600);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <main class="tela-auth">
+    <div class="cartao-auth">
+      <span class="eyebrow">Novo cadastro</span>
+      <h1>Criar conta de cidadão</h1>
+
+      <div id="area-mensagem"></div>
+
+      <form id="form-cadastro">
+        <div class="campo">
+          <label for="nome">Nome completo</label>
+          <input type="text" id="nome" name="nome" required placeholder="Seu nome">
+        </div>
+        <div class="campo">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="seu@email.com">
+        </div>
+        <div class="campo">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" required minlength="6" autocomplete="new-password" placeholder="••••••••">
+          <div class="dica-senha">Mínimo de 6 caracteres.</div>
+        </div>
+        <button type="submit" class="btn btn-primario btn-bloco" id="btn-criar">Criar conta</button>
+      </form>
+
+      <div class="rodape-auth">
+        Já tem conta? <a href="/public/login.html">Entrar</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('cadastro');
+
+    if (Auth.estaAutenticado()) {
+      window.location.href = '/cidadao/minhas-ocorrencias.html';
+    }
+
+    const form = document.getElementById('form-cadastro');
+    const areaMensagem = document.getElementById('area-mensagem');
+    const btnCriar = document.getElementById('btn-criar');
+
+    function mostrarErro(msg) {
+      areaMensagem.innerHTML = `<div class="aviso-form">${msg}</div>`;
+    }
+    function mostrarSucesso(msg) {
+      areaMensagem.innerHTML = `<div class="sucesso-form">${msg}</div>`;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      areaMensagem.innerHTML = '';
+      btnCriar.disabled = true;
+      btnCriar.textContent = 'Criando conta...';
+
+      const nome = document.getElementById('nome').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const senha = document.getElementById('senha').value;
+
+      try {
+        // POST /api/auth/registrar no user-service
+        await Api.post(
+          `${CONFIG.USER_SERVICE_URL}/api/auth/registrar`,
+          { nome, email, senha },
+          false
+        );
+
+        mostrarSucesso('Conta criada com sucesso! Redirecionando para o login...');
+        setTimeout(() => {
+          window.location.href = '/public/login.html';
+        }, 1200);
+
+      } catch (erro) {
+        console.error(erro);
+        if (erro.status === 400 || erro.status === 409) {
+          mostrarErro(erro.message || 'Este e-mail já está cadastrado.');
+        } else if (erro.status === 0) {
+          mostrarErro(erro.message);
+        } else {
+          mostrarErro('Não foi possível criar a conta. Tente novamente.');
+        }
+        btnCriar.disabled = false;
+        btnCriar.textContent = 'Criar conta';
+      }
+    });
+  </script>
+</body>
+</html>

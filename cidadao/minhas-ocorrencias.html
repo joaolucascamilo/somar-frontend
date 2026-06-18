@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minhas ocorrências — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .topo-pagina {
+      padding: 40px 0 24px;
+      border-bottom: 1px solid #e3ddd0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .topo-pagina .eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .area-lista {
+      padding: 32px 0 64px;
+    }
+    .grade-fichas {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+    .ficha-cabeca {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .ficha-tipo {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .ficha-endereco {
+      font-size: 0.85rem;
+      color: var(--grafite-600);
+      margin-bottom: 12px;
+    }
+    .ficha-rodape {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      color: var(--grafite-400);
+      padding-top: 12px;
+      border-top: 1px dashed #e3ddd0;
+    }
+    @media (max-width: 768px) {
+      .grade-fichas { grid-template-columns: 1fr; }
+      .topo-pagina { flex-direction: column; align-items: flex-start; gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <div class="topo-pagina">
+    <div class="container" style="display:flex; justify-content: space-between; align-items: flex-end; width: 100%;">
+      <div>
+        <span class="eyebrow">Seus protocolos</span>
+        <h1>Minhas ocorrências</h1>
+      </div>
+      <a href="/cidadao/registrar.html" class="btn btn-primario">+ Nova ocorrência</a>
+    </div>
+  </div>
+
+  <main class="container area-lista">
+    <div id="lista-minhas-ocorrencias">
+      <div class="carregando"><span class="spinner"></span> Carregando suas ocorrências...</div>
+    </div>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/enums.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('minhas');
+    Auth.protegerPagina(['ROLE_CIDADAO']);
+
+    async function carregarMinhasOcorrencias() {
+      const container = document.getElementById('lista-minhas-ocorrencias');
+      try {
+        const ocorrencias = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/minhas`);
+
+        if (!ocorrencias || ocorrencias.length === 0) {
+          container.innerHTML = `
+            <div class="estado-vazio">
+              <span class="icone">📋</span>
+              Você ainda não registrou nenhuma ocorrência.<br>
+              <a href="/cidadao/registrar.html" class="btn btn-primario" style="margin-top: 16px;">Registrar agora</a>
+            </div>`;
+          return;
+        }
+
+        container.innerHTML = `<div class="grade-fichas">${ocorrencias.map(oc => {
+          const tipo = TipoOcorrencia[oc.tipoOcorrencia] || { label: 'Desconhecido', icone: '📌' };
+          const status = StatusOcorrencia[oc.status] || { label: 'Desconhecido', cor: '#999' };
+          const endereco = oc.endereco
+            ? `${oc.endereco.rua}, ${oc.endereco.numero} — ${oc.endereco.bairro}`
+            : 'Endereço não informado';
+
+          return `
+            <div class="ficha">
+              <div class="ficha-corpo">
+                <div class="ficha-cabeca">
+                  <span class="ficha-tipo">${tipo.icone} ${tipo.label}</span>
+                  <span class="badge" style="background:${status.cor}1A; color:${status.cor};">${status.label}</span>
+                </div>
+                <div class="ficha-endereco">${endereco}</div>
+                <div class="ficha-rodape">
+                  <span>Protocolo #${String(oc.id).padStart(5, '0')}</span>
+                  <a href="/public/ocorrencia.html?id=${oc.id}" style="color: var(--amarelo-sinal-escuro); font-weight: 600;">Ver detalhes →</a>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}</div>`;
+
+      } catch (erro) {
+        console.error(erro);
+        if (erro.status === 401) {
+          container.innerHTML = `<div class="aviso-form">Sua sessão expirou. Faça login novamente.</div>`;
+          setTimeout(() => Auth.logout(), 1500);
+        } else {
+          container.innerHTML = `<div class="aviso-form">Não foi possível carregar suas ocorrências. ${erro.message || ''}</div>`;
+        }
+      }
+    }
+
+    carregarMinhasOcorrencias();
+  </script>
+</body>
+</html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrar ocorrência — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .topo-pagina {
+      padding: 40px 0 24px;
+      border-bottom: 1px solid #e3ddd0;
+    }
+    .topo-pagina .eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .area-form {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 40px 0 64px;
+    }
+    .bloco-form {
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      padding: 28px 30px;
+      margin-bottom: 20px;
+    }
+    .bloco-form h3 {
+      font-size: 0.95rem;
+      margin-bottom: 18px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e3ddd0;
+    }
+    .grade-tipos {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .opcao-tipo {
+      position: relative;
+    }
+    .opcao-tipo input {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      margin: 0;
+    }
+    .opcao-tipo .cartao-tipo {
+      border: 1.5px solid #d8d2c2;
+      border-radius: 4px;
+      padding: 12px 8px;
+      text-align: center;
+      font-size: 0.76rem;
+      color: var(--grafite-600);
+      transition: all 0.15s ease;
+    }
+    .opcao-tipo .cartao-tipo .ic {
+      font-size: 1.3rem;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .opcao-tipo input:checked + .cartao-tipo {
+      border-color: var(--amarelo-sinal-escuro);
+      background: #fef9e7;
+      color: var(--grafite-950);
+      font-weight: 600;
+    }
+    .opcao-tipo input:focus-visible + .cartao-tipo {
+      outline: 3px solid var(--amarelo-sinal);
+      outline-offset: 1px;
+    }
+
+    .zona-fotos {
+      border: 1.5px dashed #d8d2c2;
+      border-radius: 4px;
+      padding: 28px;
+      text-align: center;
+      color: var(--grafite-600);
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+    .zona-fotos:hover {
+      border-color: var(--amarelo-sinal-escuro);
+    }
+    .zona-fotos input { display: none; }
+    .lista-fotos-preview {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .foto-preview {
+      position: relative;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid #e3ddd0;
+    }
+    .foto-preview img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+    }
+    .foto-preview .remover-foto {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(20,23,26,0.75);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      line-height: 1;
+    }
+    .nota-simulacao {
+      font-size: 0.78rem;
+      color: var(--grafite-400);
+      margin-top: 10px;
+    }
+
+    .btn-localizacao {
+      margin-top: 8px;
+    }
+    .coord-display {
+      font-family: var(--fonte-mono);
+      font-size: 0.8rem;
+      color: var(--grafite-600);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <div class="topo-pagina">
+    <div class="container">
+      <span class="eyebrow">Novo protocolo</span>
+      <h1>Registrar ocorrência</h1>
+    </div>
+  </div>
+
+  <main class="container area-form">
+    <div id="area-mensagem"></div>
+
+    <form id="form-ocorrencia">
+      <div class="bloco-form">
+        <h3>1. Tipo do problema</h3>
+        <div class="grade-tipos" id="grade-tipos">
+          <!-- preenchido via JS a partir de enums.js -->
+        </div>
+      </div>
+
+      <div class="bloco-form">
+        <h3>2. Localização</h3>
+        <div class="campo-linha">
+          <div class="campo">
+            <label for="rua">Rua</label>
+            <input type="text" id="rua" required placeholder="Rua das Flores">
+          </div>
+          <div class="campo">
+            <label for="numero">Número</label>
+            <input type="number" id="numero" required placeholder="123">
+          </div>
+        </div>
+        <div class="campo-linha">
+          <div class="campo">
+            <label for="bairro">Bairro</label>
+            <input type="text" id="bairro" required placeholder="Centro">
+          </div>
+          <div class="campo">
+            <label for="cep">CEP</label>
+            <input type="text" id="cep" required placeholder="01310100" maxlength="8" inputmode="numeric">
+          </div>
+        </div>
+        <div class="campo-linha">
+          <div class="campo">
+            <label for="cidade">Cidade</label>
+            <input type="text" id="cidade" required value="Recife">
+          </div>
+          <div class="campo">
+            <label for="estado">Estado (UF)</label>
+            <input type="text" id="estado" required value="PE" maxlength="2" style="text-transform: uppercase;">
+          </div>
+        </div>
+
+        <button type="button" class="btn btn-secundario btn-localizacao" id="btn-geolocalizacao" style="border-color: var(--grafite-950); color: var(--grafite-950);">
+          📍 Usar minha localização atual
+        </button>
+        <div class="coord-display" id="coord-display">Coordenadas não capturadas ainda.</div>
+      </div>
+
+      <div class="bloco-form">
+        <h3>3. Fotos</h3>
+        <label class="zona-fotos" id="zona-fotos">
+          <input type="file" id="input-fotos" accept="image/*" multiple>
+          <span style="font-size: 1.6rem; display:block; margin-bottom: 8px;">📷</span>
+          Toque para selecionar fotos ou arraste aqui
+        </label>
+        <div class="lista-fotos-preview" id="lista-fotos-preview"></div>
+        <div class="nota-simulacao">
+          Nota: nesta versão, o upload das fotos para o bucket está simulado —
+          as fotos abaixo serão enviadas como URLs de exemplo. A integração real
+          com o storage (S3) pode ser conectada aqui posteriormente.
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primario btn-bloco" id="btn-registrar" style="padding: 14px;">
+        Registrar ocorrência
+      </button>
+    </form>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/enums.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('registrar');
+    Auth.protegerPagina(['ROLE_CIDADAO']);
+
+    // Monta as opções de tipo de ocorrência a partir do enum compartilhado
+    const gradeTipos = document.getElementById('grade-tipos');
+    gradeTipos.innerHTML = Object.entries(TipoOcorrencia).map(([codigo, info]) => `
+      <label class="opcao-tipo">
+        <input type="radio" name="tipoOcorrencia" value="${codigo}" ${codigo === '1' ? 'checked' : ''} required>
+        <span class="cartao-tipo">
+          <span class="ic">${info.icone}</span>
+          ${info.label}
+        </span>
+      </label>
+    `).join('');
+
+    // Geolocalização do navegador
+    let coordenadas = { latitude: null, longitude: null };
+    document.getElementById('btn-geolocalizacao').addEventListener('click', () => {
+      const display = document.getElementById('coord-display');
+      if (!navigator.geolocation) {
+        display.textContent = 'Geolocalização não suportada neste navegador.';
+        return;
+      }
+      display.textContent = 'Obtendo localização...';
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          coordenadas.latitude = pos.coords.latitude;
+          coordenadas.longitude = pos.coords.longitude;
+          display.textContent = `Capturado: ${coordenadas.latitude.toFixed(5)}, ${coordenadas.longitude.toFixed(5)}`;
+        },
+        (err) => {
+          display.textContent = 'Não foi possível obter a localização. Você pode continuar sem ela.';
+          console.warn(err);
+        }
+      );
+    });
+
+    // Simulação de fotos: como definido com o usuário, não fazemos upload
+    // real ainda. Guardamos apenas nome e uma URL de placeholder por foto.
+    let fotosSimuladas = [];
+    const inputFotos = document.getElementById('input-fotos');
+    const listaPreview = document.getElementById('lista-fotos-preview');
+
+    inputFotos.addEventListener('change', (e) => {
+      const arquivos = Array.from(e.target.files);
+      arquivos.forEach(arquivo => {
+        const url = URL.createObjectURL(arquivo);
+        fotosSimuladas.push({ nomeArquivo: arquivo.name, urlPreview: url });
+      });
+      renderizarPreviews();
+      inputFotos.value = '';
+    });
+
+    function renderizarPreviews() {
+      listaPreview.innerHTML = fotosSimuladas.map((f, idx) => `
+        <div class="foto-preview">
+          <img src="${f.urlPreview}" alt="${f.nomeArquivo}">
+          <button type="button" class="remover-foto" data-idx="${idx}" aria-label="Remover foto">✕</button>
+        </div>
+      `).join('');
+
+      listaPreview.querySelectorAll('.remover-foto').forEach(btn => {
+        btn.addEventListener('click', () => {
+          fotosSimuladas.splice(Number(btn.dataset.idx), 1);
+          renderizarPreviews();
+        });
+      });
+    }
+
+    // Submissão do formulário
+    const form = document.getElementById('form-ocorrencia');
+    const areaMensagem = document.getElementById('area-mensagem');
+    const btnRegistrar = document.getElementById('btn-registrar');
+
+    function mostrarErro(msg) {
+      areaMensagem.innerHTML = `<div class="aviso-form">${msg}</div>`;
+      areaMensagem.scrollIntoView({ behavior: 'smooth' });
+    }
+    function mostrarSucesso(msg) {
+      areaMensagem.innerHTML = `<div class="sucesso-form">${msg}</div>`;
+      areaMensagem.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      areaMensagem.innerHTML = '';
+      btnRegistrar.disabled = true;
+      btnRegistrar.textContent = 'Registrando...';
+
+      const tipoOcorrencia = Number(form.querySelector('input[name="tipoOcorrencia"]:checked').value);
+      const cep = document.getElementById('cep').value.replace(/\D/g, '');
+
+      const payload = {
+        enderecoOcorrencia: {
+          rua: document.getElementById('rua').value.trim(),
+          numero: Number(document.getElementById('numero').value),
+          bairro: document.getElementById('bairro').value.trim(),
+          cidade: document.getElementById('cidade').value.trim(),
+          estado: document.getElementById('estado').value.trim().toUpperCase(),
+          cep: Number(cep),
+        },
+        tipoOcorrencia,
+        // Upload real ainda não implementado — enviamos uma URL simulada
+        // por foto selecionada, mantendo o formato esperado pela API.
+        fotoOcorrencia: fotosSimuladas.map(f => ({
+          nomeArquivo: f.nomeArquivo,
+          url: `https://bucket-simulado.s3.amazonaws.com/${encodeURIComponent(f.nomeArquivo)}`,
+          bucket: 'bucket-simulado',
+        })),
+        latitude: coordenadas.latitude,
+        longitude: coordenadas.longitude,
+      };
+
+      try {
+        const resposta = await Api.post(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias`, payload);
+        mostrarSucesso(`Ocorrência registrada com sucesso! Protocolo #${String(resposta.id).padStart(5, '0')}. Redirecionando...`);
+        setTimeout(() => {
+          window.location.href = '/cidadao/minhas-ocorrencias.html';
+        }, 1500);
+      } catch (erro) {
+        console.error(erro);
+        if (erro.status === 400) {
+          mostrarErro(erro.message || 'Já existe uma ocorrência pendente do mesmo tipo neste local.');
+        } else if (erro.status === 401) {
+          mostrarErro('Sua sessão expirou. Faça login novamente.');
+          setTimeout(() => Auth.logout(), 1500);
+        } else if (erro.status === 0) {
+          mostrarErro(erro.message);
+        } else {
+          mostrarErro('Não foi possível registrar a ocorrência. Tente novamente.');
+        }
+        btnRegistrar.disabled = false;
+        btnRegistrar.textContent = 'Registrar ocorrência';
+      }
+    });
+  </script>
+</body>
+</html>

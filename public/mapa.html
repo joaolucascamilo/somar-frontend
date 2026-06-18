@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa público — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .topo-pagina {
+      padding: 40px 0 24px;
+      border-bottom: 1px solid #e3ddd0;
+    }
+    .topo-pagina .eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .topo-pagina h1 {
+      font-size: 1.8rem;
+    }
+
+    .area-conteudo {
+      padding: 32px 0 64px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 28px;
+    }
+
+    .painel-filtros {
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      padding: 20px;
+      align-self: start;
+    }
+    .painel-filtros h3 {
+      font-size: 0.9rem;
+      margin-bottom: 14px;
+    }
+
+    .lista-ocorrencias {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 640px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .item-lista {
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+    .item-lista:hover {
+      border-color: var(--amarelo-sinal-escuro);
+    }
+    .item-lista .linha-topo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .item-lista .tipo-item {
+      font-weight: 600;
+      font-size: 0.92rem;
+    }
+    .item-lista .endereco-item {
+      font-size: 0.82rem;
+      color: var(--grafite-600);
+    }
+
+    #mapa-placeholder {
+      background: #e9e5da;
+      border: 1px dashed #c9c2af;
+      border-radius: 6px;
+      min-height: 640px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      color: var(--grafite-600);
+      text-align: center;
+      padding: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .area-conteudo { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <div class="topo-pagina">
+    <div class="container">
+      <span class="eyebrow">Transparência pública</span>
+      <h1>Ocorrências registradas na cidade</h1>
+    </div>
+  </div>
+
+  <main class="container area-conteudo">
+    <aside class="painel-filtros">
+      <h3>Filtrar por tipo</h3>
+      <div class="campo">
+        <select id="filtro-tipo">
+          <option value="">Todos os tipos</option>
+          <option value="1">Buraco em via pública</option>
+          <option value="2">Pavimentação danificada</option>
+          <option value="3">Falha na drenagem</option>
+          <option value="4">Calçada irregular</option>
+          <option value="5">Falha na iluminação</option>
+          <option value="6">Sinalização defeituosa</option>
+          <option value="7">Acúmulo de lixo</option>
+          <option value="99">Outros</option>
+        </select>
+      </div>
+    </aside>
+
+    <section>
+      <div id="mapa-placeholder">
+        <span style="font-size: 2rem;">🗺️</span>
+        <div>
+          <strong>Visualização de mapa</strong><br>
+          Aqui entraria a integração com a API do <code>ms-geo</code> (mapa de calor /
+          marcadores). Os pontos abaixo já refletem os dados reais retornados por
+          <code>GET /api/ocorrencias/mapa</code>.
+        </div>
+      </div>
+
+      <h3 style="margin: 28px 0 14px; font-size: 1rem;">Lista de ocorrências</h3>
+      <div id="lista-ocorrencias" class="lista-ocorrencias">
+        <div class="carregando"><span class="spinner"></span> Carregando ocorrências...</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/enums.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('mapa');
+
+    let todasOcorrencias = [];
+
+    function renderizarLista(ocorrencias) {
+      const container = document.getElementById('lista-ocorrencias');
+
+      if (!ocorrencias || ocorrencias.length === 0) {
+        container.innerHTML = `
+          <div class="estado-vazio">
+            <span class="icone">📭</span>
+            Nenhuma ocorrência encontrada para este filtro.
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = ocorrencias.map(oc => {
+        const tipo = TipoOcorrencia[oc.tipoOcorrencia] || { label: 'Tipo desconhecido', icone: '📌' };
+        const status = StatusOcorrencia[oc.status] || { label: 'Desconhecido', cor: '#999' };
+        const endereco = oc.endereco
+          ? `${oc.endereco.rua}, ${oc.endereco.numero} — ${oc.endereco.bairro}`
+          : 'Endereço não informado';
+
+        return `
+          <div class="item-lista" onclick="window.location.href='/public/ocorrencia.html?id=${oc.id}'">
+            <div class="linha-topo-item">
+              <span class="tipo-item">${tipo.icone} ${tipo.label}</span>
+              <span class="badge" style="background:${status.cor}1A; color:${status.cor};">${status.label}</span>
+            </div>
+            <div class="endereco-item">${endereco}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function carregarOcorrencias() {
+      try {
+        // GET /api/ocorrencias/mapa é público, não precisa de token
+        const dados = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/mapa`, false);
+        todasOcorrencias = dados || [];
+        renderizarLista(todasOcorrencias);
+      } catch (erro) {
+        console.error(erro);
+        document.getElementById('lista-ocorrencias').innerHTML = `
+          <div class="aviso-form">
+            Não foi possível carregar as ocorrências. ${erro.message || ''}
+          </div>`;
+      }
+    }
+
+    document.getElementById('filtro-tipo').addEventListener('change', (e) => {
+      const tipoSelecionado = e.target.value;
+      if (!tipoSelecionado) {
+        renderizarLista(todasOcorrencias);
+      } else {
+        const filtradas = todasOcorrencias.filter(
+          oc => String(oc.tipoOcorrencia) === tipoSelecionado
+        );
+        renderizarLista(filtradas);
+      }
+    });
+
+    carregarOcorrencias();
+  </script>
+</body>
+</html>

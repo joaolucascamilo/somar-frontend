@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .tela-auth {
+      min-height: calc(100vh - 200px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+    }
+    .cartao-auth {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 6px;
+      padding: 40px 36px;
+      box-shadow: var(--sombra-card);
+    }
+    .cartao-auth .eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .cartao-auth h1 {
+      font-size: 1.6rem;
+      margin-bottom: 26px;
+    }
+    .rodape-auth {
+      margin-top: 22px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--grafite-600);
+    }
+    .rodape-auth a {
+      color: var(--amarelo-sinal-escuro);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <main class="tela-auth">
+    <div class="cartao-auth">
+      <span class="eyebrow">Acesso ao sistema</span>
+      <h1>Entrar na sua conta</h1>
+
+      <div id="area-mensagem"></div>
+
+      <form id="form-login">
+        <div class="campo">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" required autocomplete="email" placeholder="seu@email.com">
+        </div>
+        <div class="campo">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" required autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primario btn-bloco" id="btn-entrar">Entrar</button>
+      </form>
+
+      <div class="rodape-auth">
+        Ainda não tem conta? <a href="/public/cadastro.html">Cadastre-se</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('login');
+
+    // Se já está logado, redireciona direto para a área correspondente
+    if (Auth.estaAutenticado()) {
+      const perfil = Auth.getPerfil();
+      window.location.href = perfil === 'ROLE_AGENTE_PREFEITURA'
+        ? '/agente/dashboard.html'
+        : '/cidadao/minhas-ocorrencias.html';
+    }
+
+    const form = document.getElementById('form-login');
+    const areaMensagem = document.getElementById('area-mensagem');
+    const btnEntrar = document.getElementById('btn-entrar');
+
+    function mostrarErro(msg) {
+      areaMensagem.innerHTML = `<div class="aviso-form">${msg}</div>`;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      areaMensagem.innerHTML = '';
+      btnEntrar.disabled = true;
+      btnEntrar.textContent = 'Entrando...';
+
+      const email = document.getElementById('email').value.trim();
+      const senha = document.getElementById('senha').value;
+
+      try {
+        // POST /api/auth/login no user-service -> retorna { token }
+        const resposta = await Api.post(
+          `${CONFIG.USER_SERVICE_URL}/api/auth/login`,
+          { email, senha },
+          false // não autenticado ainda
+        );
+
+        if (!resposta || !resposta.token) {
+          throw new Error('Resposta de login inválida do servidor.');
+        }
+
+        // O token JWT contém as claims (sub, perfil, id), conforme o README.
+        // Decodificamos para saber o perfil e redirecionar corretamente,
+        // e buscamos o perfil completo do usuário em seguida.
+        const claims = Auth.decodificarToken(resposta.token);
+        Auth.salvarSessao(resposta.token, {
+          id: claims?.id,
+          email: claims?.sub,
+          perfil: claims?.perfil,
+        });
+
+        // Busca dados completos do perfil (nome, pontos etc.) para já
+        // deixar em cache e usar na navbar/perfil sem nova chamada.
+        try {
+          const perfilCompleto = await Api.get(`${CONFIG.USER_SERVICE_URL}/api/usuarios/meu-perfil`);
+          if (perfilCompleto) {
+            Auth.salvarSessao(resposta.token, perfilCompleto);
+          }
+        } catch (e) {
+          // Não bloqueia o login se essa chamada extra falhar
+          console.warn('Não foi possível carregar o perfil completo:', e);
+        }
+
+        const perfilFinal = Auth.getPerfil();
+        window.location.href = perfilFinal === 'ROLE_AGENTE_PREFEITURA'
+          ? '/agente/dashboard.html'
+          : '/cidadao/minhas-ocorrencias.html';
+
+      } catch (erro) {
+        console.error(erro);
+        if (erro.status === 401 || erro.status === 403) {
+          mostrarErro('E-mail ou senha incorretos.');
+        } else if (erro.status === 0) {
+          mostrarErro(erro.message);
+        } else {
+          mostrarErro('Não foi possível entrar. Tente novamente em alguns instantes.');
+        }
+        btnEntrar.disabled = false;
+        btnEntrar.textContent = 'Entrar';
+      }
+    });
+  </script>
+</body>
+</html>

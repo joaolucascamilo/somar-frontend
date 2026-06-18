@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ocorrências — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .topo-pagina {
+      padding: 40px 0 24px;
+      border-bottom: 1px solid #e3ddd0;
+    }
+    .topo-pagina .eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .area-gestao { padding: 32px 0 64px; }
+
+    .barra-filtros {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+    .barra-filtros select {
+      width: auto;
+      padding: 9px 12px;
+      border: 1.5px solid #d8d2c2;
+      border-radius: 4px;
+      background: #fff;
+    }
+
+    table.tabela-ocorrencias {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    table.tabela-ocorrencias th {
+      text-align: left;
+      font-family: var(--fonte-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--grafite-400);
+      padding: 12px 16px;
+      background: var(--osso-100);
+      border-bottom: 1px solid #e3ddd0;
+    }
+    table.tabela-ocorrencias td {
+      padding: 13px 16px;
+      border-bottom: 1px solid #f0ece1;
+      font-size: 0.88rem;
+      vertical-align: middle;
+    }
+    table.tabela-ocorrencias tr:last-child td {
+      border-bottom: none;
+    }
+    .col-acoes {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .col-acoes select {
+      padding: 6px 10px;
+      border: 1.5px solid #d8d2c2;
+      border-radius: 4px;
+      font-size: 0.82rem;
+    }
+    .btn-mini {
+      font-size: 0.78rem;
+      padding: 7px 14px;
+    }
+
+    /* Modal simples de confirmação */
+    .overlay-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(20,23,26,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .overlay-modal.aberto { display: flex; }
+    .caixa-modal {
+      background: #fff;
+      border-radius: 6px;
+      padding: 28px 30px;
+      max-width: 380px;
+      width: 100%;
+    }
+    .caixa-modal h3 { font-size: 1.1rem; margin-bottom: 12px; text-transform: none; font-family: var(--fonte-corpo); }
+    .caixa-modal p { font-size: 0.9rem; color: var(--grafite-600); margin-bottom: 20px; }
+    .acoes-modal { display: flex; gap: 10px; justify-content: flex-end; }
+
+    @media (max-width: 900px) {
+      table.tabela-ocorrencias { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <div class="topo-pagina">
+    <div class="container">
+      <span class="eyebrow">Gestão de chamados</span>
+      <h1>Todas as ocorrências</h1>
+    </div>
+  </div>
+
+  <main class="container area-gestao">
+    <div id="area-mensagem"></div>
+
+    <div class="barra-filtros">
+      <select id="filtro-status">
+        <option value="">Todos os status</option>
+        <option value="1">Registrado</option>
+        <option value="4">Em procedimento</option>
+        <option value="3">Resolvido</option>
+        <option value="2">Cancelado</option>
+      </select>
+      <select id="filtro-prioridade">
+        <option value="">Todas as prioridades</option>
+        <option value="CRITICA">Crítica</option>
+        <option value="ALTA">Alta</option>
+        <option value="MEDIA">Média</option>
+        <option value="BAIXA">Baixa</option>
+      </select>
+    </div>
+
+    <div id="container-tabela">
+      <div class="carregando"><span class="spinner"></span> Carregando ocorrências...</div>
+    </div>
+  </main>
+
+  <!-- Modal de confirmação de mudança de status -->
+  <div class="overlay-modal" id="overlay-modal">
+    <div class="caixa-modal">
+      <h3>Confirmar atualização de status</h3>
+      <p id="texto-modal"></p>
+      <div class="acoes-modal">
+        <button class="btn btn-secundario" id="btn-cancelar-modal" style="border-color: var(--grafite-950); color: var(--grafite-950);">Cancelar</button>
+        <button class="btn btn-primario" id="btn-confirmar-modal">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/api.js"></script>
+  <script src="../shared/enums.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('ocorrencias-agente');
+    Auth.protegerPagina(['ROLE_AGENTE_PREFEITURA']);
+
+    let todasOcorrencias = [];
+    let pendente = null; // { id, novoStatus } aguardando confirmação no modal
+
+    function mostrarErro(msg) {
+      document.getElementById('area-mensagem').innerHTML = `<div class="aviso-form">${msg}</div>`;
+    }
+    function mostrarSucesso(msg) {
+      document.getElementById('area-mensagem').innerHTML = `<div class="sucesso-form">${msg}</div>`;
+    }
+
+    async function carregarOcorrencias() {
+      const container = document.getElementById('container-tabela');
+      try {
+        const dados = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias`);
+        todasOcorrencias = dados || [];
+        renderizarTabela(todasOcorrencias);
+      } catch (erro) {
+        console.error(erro);
+        if (erro.status === 401 || erro.status === 403) {
+          container.innerHTML = `<div class="aviso-form">Sem permissão ou sessão expirada.</div>`;
+          setTimeout(() => Auth.logout(), 1500);
+        } else {
+          container.innerHTML = `<div class="aviso-form">Não foi possível carregar as ocorrências. ${erro.message || ''}</div>`;
+        }
+      }
+    }
+
+    function renderizarTabela(ocorrencias) {
+      const container = document.getElementById('container-tabela');
+
+      if (!ocorrencias || ocorrencias.length === 0) {
+        container.innerHTML = `<div class="estado-vazio"><span class="icone">📭</span>Nenhuma ocorrência encontrada para este filtro.</div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="tabela-ocorrencias">
+          <thead>
+            <tr>
+              <th>Protocolo</th>
+              <th>Tipo</th>
+              <th>Endereço</th>
+              <th>Prioridade</th>
+              <th>Status</th>
+              <th>Atualizar para</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ocorrencias.map(oc => {
+              const tipo = TipoOcorrencia[oc.tipoOcorrencia] || { label: 'Desconhecido', icone: '📌' };
+              const status = StatusOcorrencia[oc.status] || { label: 'Desconhecido', cor: '#999' };
+              const prioridade = NivelPrioridade[oc.nivelPrioridade] || { label: oc.nivelPrioridade || '—', cor: '#999' };
+              const endereco = oc.endereco ? `${oc.endereco.rua}, ${oc.endereco.bairro}` : '—';
+              const resolvidoOuCancelado = oc.status === 3 || oc.status === 2;
+
+              return `
+                <tr>
+                  <td><a href="/public/ocorrencia.html?id=${oc.id}" style="font-family: var(--fonte-mono); color: var(--grafite-950);">#${String(oc.id).padStart(5, '0')}</a></td>
+                  <td>${tipo.icone} ${tipo.label}</td>
+                  <td>${endereco}</td>
+                  <td><span class="badge" style="background:${prioridade.cor}1A; color:${prioridade.cor};">${prioridade.label}</span></td>
+                  <td><span class="badge" style="background:${status.cor}1A; color:${status.cor};">${status.label}</span></td>
+                  <td class="col-acoes">
+                    ${resolvidoOuCancelado
+                      ? `<span style="color: var(--grafite-400); font-size: 0.8rem;">Estado final</span>`
+                      : `
+                        <select data-id="${oc.id}" class="select-novo-status">
+                          <option value="">Selecionar...</option>
+                          <option value="4" ${oc.status === 4 ? 'disabled' : ''}>Em procedimento</option>
+                          <option value="3">Resolvido</option>
+                          <option value="2">Cancelado</option>
+                        </select>
+                        <button class="btn btn-escuro btn-mini" data-id="${oc.id}" disabled>Aplicar</button>
+                      `
+                    }
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+
+      // Habilita o botão "Aplicar" só quando um novo status é selecionado
+      container.querySelectorAll('.select-novo-status').forEach(select => {
+        select.addEventListener('change', () => {
+          const btn = container.querySelector(`button.btn-mini[data-id="${select.dataset.id}"]`);
+          btn.disabled = !select.value;
+        });
+      });
+
+      container.querySelectorAll('button.btn-mini').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.id;
+          const select = container.querySelector(`.select-novo-status[data-id="${id}"]`);
+          const novoStatusCodigo = Number(select.value);
+          abrirModalConfirmacao(id, novoStatusCodigo);
+        });
+      });
+    }
+
+    // ---------- Modal de confirmação ----------
+    const overlay = document.getElementById('overlay-modal');
+    const textoModal = document.getElementById('texto-modal');
+
+    function abrirModalConfirmacao(id, novoStatusCodigo) {
+      const statusInfo = StatusOcorrencia[novoStatusCodigo];
+      pendente = { id, novoStatusCodigo };
+      textoModal.textContent = `Confirma a atualização da ocorrência #${String(id).padStart(5, '0')} para o status "${statusInfo.label}"?`;
+      if (novoStatusCodigo === 3) {
+        textoModal.textContent += ' Esta ação concede 50 pontos de reputação ao cidadão e não pode ser desfeita.';
+      }
+      overlay.classList.add('aberto');
+    }
+
+    document.getElementById('btn-cancelar-modal').addEventListener('click', () => {
+      overlay.classList.remove('aberto');
+      pendente = null;
+    });
+
+    document.getElementById('btn-confirmar-modal').addEventListener('click', async () => {
+      if (!pendente) return;
+      const { id, novoStatusCodigo } = pendente;
+      overlay.classList.remove('aberto');
+
+      try {
+        // Conforme decidido: a atualização de status passa pelo
+        // workflow-status-service (POST /api/workflow/{id}/status),
+        // que mantém o histórico e dispara a gamificação ao resolver.
+        const url = `${CONFIG.WORKFLOW_SERVICE_URL}/api/workflow/${id}/status?status=${novoStatusCodigo}`;
+        await Api.post(url, {});
+
+        mostrarSucesso(`Ocorrência #${String(id).padStart(5, '0')} atualizada com sucesso.`);
+        await carregarOcorrencias();
+        aplicarFiltros();
+      } catch (erro) {
+        console.error(erro);
+        if (erro.status === 400) {
+          mostrarErro(erro.message || 'Não é possível atualizar para este status.');
+        } else if (erro.status === 401 || erro.status === 403) {
+          mostrarErro('Sem permissão ou sessão expirada.');
+          setTimeout(() => Auth.logout(), 1500);
+        } else {
+          mostrarErro(`Não foi possível atualizar o status. ${erro.message || ''}`);
+        }
+      }
+      pendente = null;
+    });
+
+    // ---------- Filtros ----------
+    function aplicarFiltros() {
+      const statusSelecionado = document.getElementById('filtro-status').value;
+      const prioridadeSelecionada = document.getElementById('filtro-prioridade').value;
+
+      let filtradas = todasOcorrencias;
+      if (statusSelecionado) {
+        filtradas = filtradas.filter(o => String(o.status) === statusSelecionado);
+      }
+      if (prioridadeSelecionada) {
+        filtradas = filtradas.filter(o => o.nivelPrioridade === prioridadeSelecionada);
+      }
+      renderizarTabela(filtradas);
+    }
+
+    document.getElementById('filtro-status').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtro-prioridade').addEventListener('change', aplicarFiltros);
+
+    carregarOcorrencias();
+  </script>
+</body>
+</html>

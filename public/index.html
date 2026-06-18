@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOMAR — Sistema de Ocorrências e Monitoramento de Áreas do Recife</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/styles.css">
+  <style>
+    .hero {
+      background: var(--grafite-950);
+      color: var(--osso-50);
+      padding: 88px 0 96px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      right: -120px;
+      top: -120px;
+      width: 420px;
+      height: 420px;
+      border: 60px solid rgba(242, 183, 5, 0.08);
+      border-radius: 50%;
+    }
+    .hero .container {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 48px;
+      align-items: center;
+    }
+    .hero-eyebrow {
+      font-family: var(--fonte-mono);
+      color: var(--amarelo-sinal);
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      display: block;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      line-height: 1.08;
+      color: #fff;
+      margin-bottom: 22px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--amarelo-sinal);
+    }
+    .hero p.lead {
+      font-size: 1.1rem;
+      color: var(--grafite-400);
+      max-width: 480px;
+      margin-bottom: 32px;
+      line-height: 1.55;
+    }
+    .hero-ctas {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    /* Painel de "ficha" no hero — simula um protocolo sendo aberto */
+    .hero-ficha {
+      background: var(--osso-50);
+      color: var(--grafite-950);
+      border-radius: 6px;
+      padding: 26px 28px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+      transform: rotate(1.5deg);
+      font-family: var(--fonte-mono);
+    }
+    .hero-ficha .linha-topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 2px dashed #d8d2c2;
+      padding-bottom: 12px;
+      margin-bottom: 14px;
+    }
+    .hero-ficha .protocolo {
+      font-size: 0.78rem;
+      color: var(--grafite-600);
+    }
+    .hero-ficha .status-pill {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+    .hero-ficha h3 {
+      font-family: var(--fonte-corpo);
+      text-transform: none;
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      letter-spacing: 0;
+    }
+    .hero-ficha .endereco {
+      font-size: 0.85rem;
+      color: var(--grafite-600);
+      margin-bottom: 16px;
+    }
+    .hero-ficha .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-size: 0.78rem;
+    }
+    .hero-ficha .meta-grid .rotulo {
+      color: var(--grafite-400);
+      display: block;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.68rem;
+      margin-bottom: 2px;
+    }
+
+    /* Seção: o problema */
+    .secao {
+      padding: 80px 0;
+    }
+    .secao-cabeca {
+      max-width: 640px;
+      margin-bottom: 48px;
+    }
+    .secao-cabeca .eyebrow {
+      font-family: var(--fonte-mono);
+      color: var(--amarelo-sinal-escuro);
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 12px;
+    }
+    .secao-cabeca h2 {
+      font-size: 2rem;
+      margin-bottom: 14px;
+    }
+    .secao-cabeca p {
+      color: var(--grafite-600);
+      font-size: 1.02rem;
+      line-height: 1.6;
+    }
+
+    .grade-problemas {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .item-problema {
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 4px;
+      padding: 22px 18px;
+      text-align: left;
+    }
+    .item-problema .icone {
+      font-size: 1.6rem;
+      display: block;
+      margin-bottom: 10px;
+    }
+    .item-problema .titulo {
+      font-family: var(--fonte-display);
+      font-size: 0.92rem;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+    }
+    .item-problema .desc {
+      font-size: 0.86rem;
+      color: var(--grafite-600);
+      line-height: 1.5;
+    }
+
+    /* Seção: como funciona — numerado porque É uma sequência real */
+    .secao-escura {
+      background: var(--grafite-950);
+      color: var(--osso-100);
+    }
+    .secao-escura .secao-cabeca p {
+      color: var(--grafite-400);
+    }
+    .passos {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      position: relative;
+    }
+    .passo {
+      padding: 0 18px;
+      position: relative;
+    }
+    .passo:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 22px;
+      right: -8px;
+      width: 16px;
+      height: 1px;
+      background: var(--grafite-600);
+    }
+    .passo .num {
+      font-family: var(--fonte-mono);
+      color: var(--amarelo-sinal);
+      font-size: 0.85rem;
+      margin-bottom: 14px;
+      display: block;
+    }
+    .passo h4 {
+      font-size: 1rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .passo p {
+      font-size: 0.85rem;
+      color: var(--grafite-400);
+      line-height: 1.55;
+    }
+
+    /* Seção perfis */
+    .grade-perfis {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .cartao-perfil {
+      border: 1.5px solid #e3ddd0;
+      border-radius: 4px;
+      padding: 32px;
+      background: #fff;
+    }
+    .cartao-perfil .selo-perfil {
+      font-family: var(--fonte-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      border: 1px solid var(--amarelo-sinal-escuro);
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 2px;
+      margin-bottom: 16px;
+    }
+    .cartao-perfil h3 {
+      font-size: 1.3rem;
+      margin-bottom: 10px;
+    }
+    .cartao-perfil ul {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 22px;
+      color: var(--grafite-600);
+      font-size: 0.92rem;
+      line-height: 1.8;
+    }
+    .cartao-perfil ul li::before {
+      content: '— ';
+      color: var(--amarelo-sinal-escuro);
+    }
+
+    .cta-final {
+      text-align: center;
+      padding: 90px 0;
+      background: var(--osso-100);
+    }
+    .cta-final h2 {
+      font-size: 2.1rem;
+      margin-bottom: 16px;
+    }
+    .cta-final p {
+      color: var(--grafite-600);
+      margin-bottom: 28px;
+    }
+
+    @media (max-width: 900px) {
+      .hero .container { grid-template-columns: 1fr; }
+      .hero-ficha { transform: none; }
+      .grade-problemas { grid-template-columns: repeat(2, 1fr); }
+      .passos { grid-template-columns: 1fr; gap: 28px; }
+      .passo::after { display: none; }
+      .grade-perfis { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
+  <div id="navbar-root"></div>
+
+  <main id="conteudo">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="container">
+        <div>
+          <span class="hero-eyebrow">Fiscalização comunitária · Recife</span>
+          <h1>Buraco na rua não <em>some</em> do sistema.</h1>
+          <p class="lead">
+            O SOMAR conecta o que o cidadão vê na rua ao que a prefeitura precisa
+            resolver. Fotografe, registre a localização e acompanhe o reparo —
+            com prioridade calculada por dados, não por sorte.
+          </p>
+          <div class="hero-ctas">
+            <a href="/public/cadastro.html" class="btn btn-primario">Registrar uma ocorrência</a>
+            <a href="/public/mapa.html" class="btn btn-secundario">Ver mapa público</a>
+          </div>
+        </div>
+
+        <div class="hero-ficha">
+          <div class="linha-topo">
+            <span class="protocolo">PROTOCOLO #00042</span>
+            <span class="status-pill">Em procedimento</span>
+          </div>
+          <h3>🕳️ Buraco em via pública</h3>
+          <p class="endereco">Rua das Flores, 123 — Centro</p>
+          <div class="meta-grid">
+            <div><span class="rotulo">Prioridade</span>Alta</div>
+            <div><span class="rotulo">Denúncias</span>5 cidadãos</div>
+            <div><span class="rotulo">Registrado em</span>02/06/2026</div>
+            <div><span class="rotulo">Pontos ao concluir</span>+50 reputação</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- O PROBLEMA -->
+    <section class="secao">
+      <div class="container">
+        <div class="secao-cabeca">
+          <span class="eyebrow">O problema</span>
+          <h2>Hoje, denúncia urbana é grito no vazio.</h2>
+          <p>
+            Sem canal único, sem rastreamento e sem priorização por dados, os mesmos
+            problemas se repetem — e a prefeitura decide às cegas. O SOMAR cobre
+            as falhas mais comuns de infraestrutura urbana:
+          </p>
+        </div>
+        <div class="grade-problemas">
+          <div class="item-problema">
+            <span class="icone">🕳️</span>
+            <div class="titulo">Buracos na via</div>
+            <div class="desc">O tipo de ocorrência com maior peso no cálculo de prioridade.</div>
+          </div>
+          <div class="item-problema">
+            <span class="icone">💡</span>
+            <div class="titulo">Iluminação</div>
+            <div class="desc">Postes apagados ou com falha intermitente.</div>
+          </div>
+          <div class="item-problema">
+            <span class="icone">🌊</span>
+            <div class="titulo">Drenagem</div>
+            <div class="desc">Bueiros entupidos e pontos de alagamento recorrente.</div>
+          </div>
+          <div class="item-problema">
+            <span class="icone">🗑️</span>
+            <div class="titulo">Lixo acumulado</div>
+            <div class="desc">Descarte irregular em vias e terrenos públicos.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section class="secao secao-escura">
+      <div class="container">
+        <div class="secao-cabeca">
+          <span class="eyebrow">Como funciona</span>
+          <h2>Da foto ao reparo, em quatro etapas.</h2>
+          <p>O fluxo é o mesmo que orienta a arquitetura por trás do sistema — cada etapa é um microsserviço falando com o próximo.</p>
+        </div>
+        <div class="passos">
+          <div class="passo">
+            <span class="num">01</span>
+            <h4>Cidadão registra</h4>
+            <p>Foto, localização e categoria do problema, em menos de um minuto.</p>
+          </div>
+          <div class="passo">
+            <span class="num">02</span>
+            <h4>Sistema localiza</h4>
+            <p>O ponto é geocodificado e aparece no mapa público em tempo real.</p>
+          </div>
+          <div class="passo">
+            <span class="num">03</span>
+            <h4>Prioridade é calculada</h4>
+            <p>Tipo, recorrência, tempo em aberto e proximidade de áreas críticas.</p>
+          </div>
+          <div class="passo">
+            <span class="num">04</span>
+            <h4>Prefeitura resolve</h4>
+            <p>Agente atualiza o status; cidadão é notificado e ganha pontos.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PERFIS -->
+    <section class="secao">
+      <div class="container">
+        <div class="secao-cabeca">
+          <span class="eyebrow">Quem usa</span>
+          <h2>Dois lados, um mesmo protocolo.</h2>
+        </div>
+        <div class="grade-perfis">
+          <div class="cartao-perfil">
+            <span class="selo-perfil">Cidadão</span>
+            <h3>Reporte e acompanhe</h3>
+            <ul>
+              <li>Registra ocorrências com foto e geolocalização</li>
+              <li>Acompanha o status de cada protocolo aberto</li>
+              <li>Acumula pontos de reputação a cada resolução</li>
+              <li>Visualiza o mapa público de problemas da região</li>
+            </ul>
+            <a href="/public/cadastro.html" class="btn btn-escuro">Criar conta de cidadão</a>
+          </div>
+          <div class="cartao-perfil">
+            <span class="selo-perfil">Agente da prefeitura</span>
+            <h3>Priorize e resolva</h3>
+            <ul>
+              <li>Visualiza todas as ocorrências por prioridade calculada</li>
+              <li>Atualiza o status de cada chamado</li>
+              <li>Acompanha histórico completo de cada protocolo</li>
+              <li>Acessa indicadores para planejar manutenção</li>
+            </ul>
+            <a href="/public/login.html" class="btn btn-secundario" style="border-color: var(--grafite-950); color: var(--grafite-950);">Acessar painel</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA FINAL -->
+    <section class="cta-final">
+      <div class="container">
+        <h2>O próximo buraco que você vir, registre.</h2>
+        <p>Leva menos tempo do que esperar a prefeitura aparecer por acaso.</p>
+        <a href="/public/cadastro.html" class="btn btn-primario">Começar agora</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      SOMAR — Trabalho de Conclusão de Curso. Sistema de Ocorrências e Monitoramento de Áreas do Recife.
+    </div>
+  </footer>
+
+  <script src="../shared/config.js"></script>
+  <script src="../shared/auth.js"></script>
+  <script src="../shared/navbar.js"></script>
+  <script>
+    montarNavbar('home');
+  </script>
+</body>
+</html>
