@@ -97,8 +97,8 @@
 
   <div class="topo-pagina">
     <div class="container">
-      <span class="eyebrow">Transparência pública</span>
-      <h1>Ocorrências registradas na cidade</h1>
+      <span class="eyebrow" id="subtitulo-pagina">Seus protocolos</span>
+      <h1 id="titulo-pagina">Minhas ocorrências</h1>
     </div>
   </div>
 
@@ -138,6 +138,14 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     montarNavbar('mapa');
+    Auth.protegerPagina(['ROLE_CIDADAO', 'ROLE_AGENTE_PREFEITURA']);
+
+    const ehAgente = Auth.getPerfil() === 'ROLE_AGENTE_PREFEITURA';
+
+    if (ehAgente) {
+      document.getElementById('subtitulo-pagina').textContent = 'Visão administrativa';
+      document.getElementById('titulo-pagina').textContent = 'Ocorrências em aberto';
+    }
 
     // --- Mapa (Leaflet + OpenStreetMap) ---
 
@@ -150,7 +158,6 @@
       maxZoom: 19,
     }).addTo(mapa);
 
-    // Mapeia as categorias do ms-geo para os IDs numéricos do TipoOcorrencia
     const CATEGORIA_PARA_TIPO = {
       BURACO: 1, BURACO_VIA: 1,
       PAVIMENTACAO: 2, PAVIMENTACAO_DANIFICADA: 2,
@@ -160,12 +167,6 @@
       SINALIZACAO: 6, SINALIZACAO_DEFEITUOSA: 6,
       LIXO: 7, ACUMULO_LIXO: 7,
       OUTROS: 99,
-    };
-
-    const COR_POR_TIPO = {
-      1: '#DC2626', 2: '#F59E0B', 3: '#3B82F6',
-      4: '#8B5CF6', 5: '#F97316', 6: '#EF4444',
-      7: '#6B7280', 99: '#374151',
     };
 
     function criarIcone(cor) {
@@ -178,42 +179,45 @@
       });
     }
 
+    // Cor do marcador: status (cidadão) ou criticidade (agente)
+    function corDoMarcador(oc) {
+      if (!oc) return '#374151';
+      if (ehAgente) return (NivelPrioridade[oc.nivelPrioridade] || { cor: '#374151' }).cor;
+      return (StatusOcorrencia[oc.status] || { cor: '#374151' }).cor;
+    }
+
     const camadaMarcadores = L.layerGroup().addTo(mapa);
     let pontosMapa = [];
+    // Lookup id → ocorrência para colorização e popup
+    let mapaOcorrencias = new Map();
 
     function renderizarMarcadores(pontos) {
       camadaMarcadores.clearLayers();
       pontos.forEach(p => {
         if (p.latitude == null || p.longitude == null) return;
-        const tipoId = CATEGORIA_PARA_TIPO[p.categoria] ?? 99;
+        const oc = mapaOcorrencias.get(p.id);
+        const tipoId = oc ? oc.tipo : (CATEGORIA_PARA_TIPO[p.categoria] ?? 99);
         const tipoInfo = TipoOcorrencia[tipoId] || { label: p.categoria || 'Ocorrência', icone: '📌' };
-        const cor = COR_POR_TIPO[tipoId] || '#374151';
+        const cor = corDoMarcador(oc);
+        const status = oc ? (StatusOcorrencia[oc.status] || { label: '—', cor: '#999' }) : null;
+        const prioridade = oc ? (NivelPrioridade[oc.nivelPrioridade] || null) : null;
+
+        let popup = `<strong>${tipoInfo.icone} ${tipoInfo.label}</strong><br>`;
+        if (ehAgente && prioridade) {
+          popup += `Prioridade: <span style="color:${prioridade.cor};font-weight:600;">${prioridade.label}</span><br>`;
+        }
+        if (status) {
+          popup += `Status: <span style="color:${status.cor};font-weight:600;">${status.label}</span><br>`;
+        }
+        popup += `<a href="/public/ocorrencia.html?id=${p.id}" style="color:#b45309">Ver detalhes →</a>`;
 
         L.marker([p.latitude, p.longitude], { icon: criarIcone(cor) })
-          .bindPopup(`
-            <strong>${tipoInfo.icone} ${tipoInfo.label}</strong><br>
-            Denúncias: ${p.quantidadeDenuncias ?? 1}<br>
-            <a href="/public/ocorrencia.html?id=${p.id}" style="color:#b45309">Ver detalhes →</a>
-          `)
+          .bindPopup(popup)
           .addTo(camadaMarcadores);
       });
     }
 
-    async function carregarPontosMapa() {
-      try {
-        const [lat, lng] = RECIFE_CENTER;
-        const dados = await Api.get(
-          `${CONFIG.GEO_SERVICE_URL}/api/geo/ocorrencias/raio?lat=${lat}&lng=${lng}&raioMetros=${RAIO_METROS}`,
-          false
-        );
-        pontosMapa = dados || [];
-        renderizarMarcadores(pontosMapa);
-      } catch (erro) {
-        console.warn('ms-geo indisponível, mapa sem marcadores:', erro.message);
-      }
-    }
-
-    // --- Lista de ocorrências (report-service) ---
+    // --- Lista de ocorrências ---
 
     let todasOcorrencias = [];
 
@@ -230,17 +234,23 @@
       }
 
       container.innerHTML = ocorrencias.map(oc => {
-        const tipo = TipoOcorrencia[oc.tipoOcorrencia] || { label: 'Tipo desconhecido', icone: '📌' };
+        const tipo = TipoOcorrencia[oc.tipo] || { label: 'Tipo desconhecido', icone: '📌' };
         const status = StatusOcorrencia[oc.status] || { label: 'Desconhecido', cor: '#999' };
         const endereco = oc.endereco
           ? `${oc.endereco.rua}, ${oc.endereco.numero} — ${oc.endereco.bairro}`
           : 'Endereço não informado';
 
+        // Agente: badge de criticidade. Cidadão: badge de status.
+        const prioridade = NivelPrioridade[oc.nivelPrioridade] || { label: oc.nivelPrioridade || '—', cor: '#999' };
+        const badge = ehAgente
+          ? `<span class="badge" style="background:${prioridade.cor}1A; color:${prioridade.cor};">${prioridade.label}</span>`
+          : `<span class="badge" style="background:${status.cor}1A; color:${status.cor};">${status.label}</span>`;
+
         return `
           <div class="item-lista" onclick="window.location.href='/public/ocorrencia.html?id=${oc.id}'">
             <div class="linha-topo-item">
               <span class="tipo-item">${tipo.icone} ${tipo.label}</span>
-              <span class="badge" style="background:${status.cor}1A; color:${status.cor};">${status.label}</span>
+              ${badge}
             </div>
             <div class="endereco-item">${endereco}</div>
           </div>
@@ -248,24 +258,47 @@
       }).join('');
     }
 
-    async function carregarOcorrencias() {
+    // --- Carregamento coordenado ---
+
+    async function inicializar() {
+      // 1. Busca ocorrências conforme perfil
       try {
-        const dados = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/mapa`, false);
+        let dados;
+        if (ehAgente) {
+          const todas = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias`);
+          // Agente vê apenas as não resolvidas e não canceladas
+          dados = (todas || []).filter(o => o.status !== 3 && o.status !== 2);
+        } else {
+          dados = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/minhas`);
+        }
         todasOcorrencias = dados || [];
+        mapaOcorrencias = new Map(todasOcorrencias.map(oc => [oc.id, oc]));
         renderizarLista(todasOcorrencias);
       } catch (erro) {
         console.error(erro);
-        document.getElementById('lista-ocorrencias').innerHTML = `
-          <div class="aviso-form">
-            Não foi possível carregar as ocorrências. ${erro.message || ''}
-          </div>`;
+        if (erro.status === 401) { Auth.logout(); return; }
+        document.getElementById('lista-ocorrencias').innerHTML =
+          `<div class="aviso-form">Não foi possível carregar as ocorrências. ${erro.message || ''}</div>`;
+      }
+
+      // 2. Busca pontos ms-geo e filtra pelos IDs relevantes (já filtrados acima)
+      try {
+        const [lat, lng] = RECIFE_CENTER;
+        const todos = await Api.get(
+          `${CONFIG.GEO_SERVICE_URL}/api/geo/ocorrencias/raio?lat=${lat}&lng=${lng}&raioMetros=${RAIO_METROS}`,
+          false
+        );
+        pontosMapa = (todos || []).filter(p => mapaOcorrencias.has(p.id));
+        renderizarMarcadores(pontosMapa);
+      } catch (erro) {
+        console.warn('ms-geo indisponível, mapa sem marcadores:', erro.message);
       }
     }
 
-    // --- Filtro (sincroniza lista + marcadores) ---
+    // --- Filtro por tipo (sincroniza lista + marcadores) ---
 
     document.getElementById('filtro-tipo').addEventListener('change', (e) => {
-      const tipoSelecionado = e.target.value; // string numérica, ex: "1"
+      const tipoSelecionado = e.target.value;
 
       if (!tipoSelecionado) {
         renderizarLista(todasOcorrencias);
@@ -274,10 +307,9 @@
       }
 
       renderizarLista(todasOcorrencias.filter(
-        oc => String(oc.tipoOcorrencia) === tipoSelecionado
+        oc => String(oc.tipo) === tipoSelecionado
       ));
 
-      // Descobre quais strings de categoria ms-geo correspondem a este tipo
       const categoriasFiltro = new Set(
         Object.entries(CATEGORIA_PARA_TIPO)
           .filter(([, id]) => String(id) === tipoSelecionado)
@@ -286,8 +318,7 @@
       renderizarMarcadores(pontosMapa.filter(p => categoriasFiltro.has(p.categoria)));
     });
 
-    carregarOcorrencias();
-    carregarPontosMapa();
+    inicializar();
   </script>
 </body>
 </html>
