@@ -107,7 +107,7 @@
         }
 
         container.innerHTML = `<div class="grade-fichas">${ocorrencias.map(oc => {
-          const tipo = TipoOcorrencia[oc.tipoOcorrencia] || { label: 'Desconhecido', icone: '📌' };
+          const tipo = TipoOcorrencia[oc.tipo] || { label: 'Desconhecido', icone: '📌' };
           const status = StatusOcorrencia[oc.status] || { label: 'Desconhecido', cor: '#999' };
           const endereco = oc.endereco
             ? `${oc.endereco.rua}, ${oc.endereco.numero} — ${oc.endereco.bairro}`

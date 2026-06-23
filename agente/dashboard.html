@@ -167,7 +167,7 @@
           rankingContainer.innerHTML = `<div class="estado-vazio"><span class="icone">✅</span>Nenhuma ocorrência crítica em aberto.</div>`;
         } else {
           rankingContainer.innerHTML = criticas.map(oc => {
-            const tipo = TipoOcorrencia[oc.tipoOcorrencia] || { label: 'Desconhecido', icone: '📌' };
+            const tipo = TipoOcorrencia[oc.tipo] || { label: 'Desconhecido', icone: '📌' };
             const prioridade = NivelPrioridade[oc.nivelPrioridade] || { label: oc.nivelPrioridade, cor: '#999' };
             const endereco = oc.endereco ? `${oc.endereco.rua}, ${oc.endereco.bairro}` : '';
             return `
