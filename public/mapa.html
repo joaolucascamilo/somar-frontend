@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../shared/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     .topo-pagina {
       padding: 40px 0 24px;
@@ -79,19 +80,11 @@
       color: var(--grafite-600);
     }
 
-    #mapa-placeholder {
-      background: #e9e5da;
-      border: 1px dashed #c9c2af;
+    #mapa {
       border-radius: 6px;
       min-height: 640px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 10px;
-      color: var(--grafite-600);
-      text-align: center;
-      padding: 24px;
+      border: 1px solid #c9c2af;
+      z-index: 0;
     }
 
     @media (max-width: 900px) {
@@ -128,15 +121,7 @@
     </aside>
 
     <section>
-      <div id="mapa-placeholder">
-        <span style="font-size: 2rem;">🗺️</span>
-        <div>
-          <strong>Visualização de mapa</strong><br>
-          Aqui entraria a integração com a API do <code>ms-geo</code> (mapa de calor /
-          marcadores). Os pontos abaixo já refletem os dados reais retornados por
-          <code>GET /api/ocorrencias/mapa</code>.
-        </div>
-      </div>
+      <div id="mapa"></div>
 
       <h3 style="margin: 28px 0 14px; font-size: 1rem;">Lista de ocorrências</h3>
       <div id="lista-ocorrencias" class="lista-ocorrencias">
@@ -150,8 +135,85 @@
   <script src="../shared/api.js"></script>
   <script src="../shared/enums.js"></script>
   <script src="../shared/navbar.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     montarNavbar('mapa');
+
+    // --- Mapa (Leaflet + OpenStreetMap) ---
+
+    const RECIFE_CENTER = [-8.0539, -34.8811];
+    const RAIO_METROS = 30000;
+
+    const mapa = L.map('mapa').setView(RECIFE_CENTER, 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(mapa);
+
+    // Mapeia as categorias do ms-geo para os IDs numéricos do TipoOcorrencia
+    const CATEGORIA_PARA_TIPO = {
+      BURACO: 1, BURACO_VIA: 1,
+      PAVIMENTACAO: 2, PAVIMENTACAO_DANIFICADA: 2,
+      DRENAGEM: 3, FALHA_DRENAGEM: 3,
+      CALCADA: 4, CALCADA_IRREGULAR: 4,
+      ILUMINACAO: 5, FALHA_ILUMINACAO: 5,
+      SINALIZACAO: 6, SINALIZACAO_DEFEITUOSA: 6,
+      LIXO: 7, ACUMULO_LIXO: 7,
+      OUTROS: 99,
+    };
+
+    const COR_POR_TIPO = {
+      1: '#DC2626', 2: '#F59E0B', 3: '#3B82F6',
+      4: '#8B5CF6', 5: '#F97316', 6: '#EF4444',
+      7: '#6B7280', 99: '#374151',
+    };
+
+    function criarIcone(cor) {
+      return L.divIcon({
+        html: `<div style="background:${cor};width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>`,
+        className: '',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+        popupAnchor: [0, -10],
+      });
+    }
+
+    const camadaMarcadores = L.layerGroup().addTo(mapa);
+    let pontosMapa = [];
+
+    function renderizarMarcadores(pontos) {
+      camadaMarcadores.clearLayers();
+      pontos.forEach(p => {
+        if (p.latitude == null || p.longitude == null) return;
+        const tipoId = CATEGORIA_PARA_TIPO[p.categoria] ?? 99;
+        const tipoInfo = TipoOcorrencia[tipoId] || { label: p.categoria || 'Ocorrência', icone: '📌' };
+        const cor = COR_POR_TIPO[tipoId] || '#374151';
+
+        L.marker([p.latitude, p.longitude], { icon: criarIcone(cor) })
+          .bindPopup(`
+            <strong>${tipoInfo.icone} ${tipoInfo.label}</strong><br>
+            Denúncias: ${p.quantidadeDenuncias ?? 1}<br>
+            <a href="/public/ocorrencia.html?id=${p.id}" style="color:#b45309">Ver detalhes →</a>
+          `)
+          .addTo(camadaMarcadores);
+      });
+    }
+
+    async function carregarPontosMapa() {
+      try {
+        const [lat, lng] = RECIFE_CENTER;
+        const dados = await Api.get(
+          `${CONFIG.GEO_SERVICE_URL}/api/geo/ocorrencias/raio?lat=${lat}&lng=${lng}&raioMetros=${RAIO_METROS}`,
+          false
+        );
+        pontosMapa = dados || [];
+        renderizarMarcadores(pontosMapa);
+      } catch (erro) {
+        console.warn('ms-geo indisponível, mapa sem marcadores:', erro.message);
+      }
+    }
+
+    // --- Lista de ocorrências (report-service) ---
 
     let todasOcorrencias = [];
 
@@ -188,7 +250,6 @@
 
     async function carregarOcorrencias() {
       try {
-        // GET /api/ocorrencias/mapa é público, não precisa de token
         const dados = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/mapa`, false);
         todasOcorrencias = dados || [];
         renderizarLista(todasOcorrencias);
@@ -201,19 +262,32 @@
       }
     }
 
+    // --- Filtro (sincroniza lista + marcadores) ---
+
     document.getElementById('filtro-tipo').addEventListener('change', (e) => {
-      const tipoSelecionado = e.target.value;
+      const tipoSelecionado = e.target.value; // string numérica, ex: "1"
+
       if (!tipoSelecionado) {
         renderizarLista(todasOcorrencias);
-      } else {
-        const filtradas = todasOcorrencias.filter(
-          oc => String(oc.tipoOcorrencia) === tipoSelecionado
-        );
-        renderizarLista(filtradas);
+        renderizarMarcadores(pontosMapa);
+        return;
       }
+
+      renderizarLista(todasOcorrencias.filter(
+        oc => String(oc.tipoOcorrencia) === tipoSelecionado
+      ));
+
+      // Descobre quais strings de categoria ms-geo correspondem a este tipo
+      const categoriasFiltro = new Set(
+        Object.entries(CATEGORIA_PARA_TIPO)
+          .filter(([, id]) => String(id) === tipoSelecionado)
+          .map(([cat]) => cat)
+      );
+      renderizarMarcadores(pontosMapa.filter(p => categoriasFiltro.has(p.categoria)));
     });
 
     carregarOcorrencias();
+    carregarPontosMapa();
   </script>
 </body>
 </html>
