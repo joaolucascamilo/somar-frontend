@@ -104,10 +104,17 @@
     montarNavbar('perfil');
     Auth.protegerPagina(['ROLE_CIDADAO']);
 
+    function formatarData(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
     async function carregarPerfil() {
       const container = document.getElementById('conteudo-perfil');
       try {
         const perfil = await Api.get(`${CONFIG.USER_SERVICE_URL}/api/usuarios/meu-perfil`);
+
+        if (!perfil) throw new Error('Resposta vazia do servidor. Verifique os logs do back-end.');
 
         // Mantém o cache local de usuário atualizado (nome usado na navbar)
         Auth.salvarSessao(Auth.getToken(), perfil);
@@ -117,10 +124,10 @@
           ? historico.map(h => `
               <div class="historico-item">
                 <div>
-                  <div class="desc">${h.descricao}</div>
+                  <div class="desc">${h.descricaoEvento}</div>
                   <div class="data">${formatarData(h.dataEvento)}</div>
                 </div>
-                <div class="pontos ${h.pontos < 0 ? 'negativo' : ''}">${h.pontos > 0 ? '+' : ''}${h.pontos} pts</div>
+                <div class="pontos ${h.pontosAlterados < 0 ? 'negativo' : ''}">${h.pontosAlterados > 0 ? '+' : ''}${h.pontosAlterados} pts</div>
               </div>
             `).join('')
           : `<div class="estado-vazio"><span class="icone">🏅</span>Nenhum evento de pontuação ainda.</div>`;

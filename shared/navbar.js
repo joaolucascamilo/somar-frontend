@@ -25,7 +25,7 @@ function montarNavbar(paginaAtiva = '') {
     linksEsquerda += `<a href="/cidadao/registrar.html" data-id="registrar">Registrar ocorrência</a>
                        <a href="/cidadao/minhas-ocorrencias.html" data-id="minhas">Minhas ocorrências</a>`;
     linksDireita = `
-      <a href="/cidadao/perfil.html" data-id="perfil">${usuario?.nome ? usuario.nome.split(' ')[0] : 'Meu perfil'}</a>
+      <a href="/cidadao/perfil.html" data-id="perfil">Meu perfil</a>
       <a href="#" id="btn-logout" class="btn btn-secundario" style="padding:8px 18px;">Saída</a>
     `;
   } else if (perfil === 'ROLE_AGENTE_PREFEITURA') {
