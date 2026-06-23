@@ -143,6 +143,15 @@
       color: var(--grafite-600);
       margin-top: 8px;
     }
+    .status-cep {
+      font-size: 0.78rem;
+      margin-top: 4px;
+      min-height: 1.1em;
+      color: var(--grafite-400);
+    }
+    .status-cep.buscando { color: var(--amarelo-sinal-escuro); }
+    .status-cep.erro     { color: #DC2626; }
+    .status-cep.ok       { color: #16A34A; }
   </style>
 </head>
 <body>
@@ -186,6 +195,7 @@
           <div class="campo">
             <label for="cep">CEP</label>
             <input type="text" id="cep" required placeholder="01310100" maxlength="8" inputmode="numeric">
+            <small id="status-cep" class="status-cep"></small>
           </div>
         </div>
         <div class="campo-linha">
@@ -246,6 +256,48 @@
         </span>
       </label>
     `).join('');
+
+    // Busca de CEP via ms-geo → ViaCEP
+    const statusCep = document.getElementById('status-cep');
+
+    function setStatusCep(msg, tipo = '') {
+      statusCep.textContent = msg;
+      statusCep.className = `status-cep ${tipo}`;
+    }
+
+    async function buscarCep(cep) {
+      setStatusCep('Buscando...', 'buscando');
+      const campoCep = document.getElementById('cep');
+      campoCep.disabled = true;
+
+      try {
+        const dados = await Api.get(`${CONFIG.GEO_SERVICE_URL}/api/geo/cep/${cep}`, false);
+
+        if (!dados || dados.erro) {
+          setStatusCep('CEP não encontrado.', 'erro');
+          return;
+        }
+
+        if (dados.logradouro) document.getElementById('rua').value = dados.logradouro;
+        if (dados.bairro)     document.getElementById('bairro').value = dados.bairro;
+        if (dados.localidade) document.getElementById('cidade').value = dados.localidade;
+        if (dados.uf)         document.getElementById('estado').value = dados.uf;
+
+        setStatusCep('Endereço preenchido automaticamente.', 'ok');
+        document.getElementById('numero').focus();
+      } catch (erro) {
+        setStatusCep('Não foi possível consultar o CEP.', 'erro');
+        console.warn('Busca CEP:', erro.message);
+      } finally {
+        campoCep.disabled = false;
+      }
+    }
+
+    document.getElementById('cep').addEventListener('input', (e) => {
+      const digits = e.target.value.replace(/\D/g, '');
+      if (digits.length === 8) buscarCep(digits);
+      else if (statusCep.textContent) setStatusCep('');
+    });
 
     // Geolocalização do navegador
     let coordenadas = { latitude: null, longitude: null };
