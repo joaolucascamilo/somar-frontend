@@ -79,6 +79,23 @@ const Api = {
   delete(url, autenticado = true) {
     return this.request(url, { method: 'DELETE' }, autenticado);
   },
+
+  async uploadS3(uploadUrl, file) {
+    let response;
+    try {
+      response = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+    } catch (networkError) {
+      throw new ApiError(0, `Não foi possível conectar ao S3. Verifique sua conexão.`, null);
+    }
+
+    if (!response.ok) {
+      throw new ApiError(response.status, `Falha no upload da foto "${file.name}" para o S3.`, null);
+    }
+  },
 };
 
 class ApiError extends Error {

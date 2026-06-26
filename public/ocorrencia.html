@@ -117,7 +117,12 @@
           : 'Endereço não informado';
 
         const fotosHtml = (oc.fotos && oc.fotos.length > 0)
-          ? `<div class="galeria-fotos">${oc.fotos.map(f => `<img src="${f.url}" alt="Foto da ocorrência" loading="lazy">`).join('')}</div>`
+          ? `<div class="galeria-fotos">${oc.fotos.map(f => {
+              const src = f.url.startsWith('http')
+                ? f.url
+                : `https://${f.bucket}.s3.amazonaws.com/${f.url}`;
+              return `<img src="${src}" alt="${f.nomeArquivo || 'Foto da ocorrência'}" loading="lazy">`;
+            }).join('')}</div>`
           : `<p style="color: var(--grafite-600); font-size: 0.9rem;">Nenhuma foto anexada.</p>`;
 
         container.innerHTML = `

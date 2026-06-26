@@ -152,6 +152,8 @@
     .status-cep.buscando { color: var(--amarelo-sinal-escuro); }
     .status-cep.erro     { color: #DC2626; }
     .status-cep.ok       { color: #16A34A; }
+    .coord-display.erro  { color: #DC2626; }
+    .coord-display.ok    { color: #16A34A; }
   </style>
 </head>
 <body>
@@ -223,11 +225,6 @@
           Toque para selecionar fotos ou arraste aqui
         </label>
         <div class="lista-fotos-preview" id="lista-fotos-preview"></div>
-        <div class="nota-simulacao">
-          Nota: nesta versão, o upload das fotos para o bucket está simulado —
-          as fotos abaixo serão enviadas como URLs de exemplo. A integração real
-          com o storage (S3) pode ser conectada aqui posteriormente.
-        </div>
       </div>
 
       <button type="submit" class="btn btn-primario btn-bloco" id="btn-registrar" style="padding: 14px;">
@@ -308,37 +305,61 @@
         return;
       }
       display.textContent = 'Obtendo localização...';
+      display.className = 'coord-display';
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          coordenadas.latitude = pos.coords.latitude;
-          coordenadas.longitude = pos.coords.longitude;
-          display.textContent = `Capturado: ${coordenadas.latitude.toFixed(5)}, ${coordenadas.longitude.toFixed(5)}`;
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          display.textContent = 'Verificando localização...';
+
+          try {
+            const dados = await Api.get(
+              `${CONFIG.GEO_SERVICE_URL}/api/geo/reverse?lat=${lat}&lon=${lon}`,
+              false
+            );
+
+            if (dados.cidade !== 'Recife') {
+              display.textContent = `Fora do Recife (${dados.cidade || 'local desconhecido'}). Só é possível registrar ocorrências no município do Recife.`;
+              display.className = 'coord-display erro';
+              return;
+            }
+
+            coordenadas.latitude = lat;
+            coordenadas.longitude = lon;
+            document.getElementById('cidade').value = dados.cidade;
+            document.getElementById('estado').value = 'PE';
+            display.textContent = `Localização confirmada em Recife — ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+            display.className = 'coord-display ok';
+          } catch (erro) {
+            display.textContent = 'Não foi possível verificar a localização. Tente novamente.';
+            display.className = 'coord-display erro';
+            console.warn('Reverse geocode:', erro.message);
+          }
         },
         (err) => {
           display.textContent = 'Não foi possível obter a localização. Você pode continuar sem ela.';
+          display.className = 'coord-display erro';
           console.warn(err);
         }
       );
     });
 
-    // Simulação de fotos: como definido com o usuário, não fazemos upload
-    // real ainda. Guardamos apenas nome e uma URL de placeholder por foto.
-    let fotosSimuladas = [];
+    let fotos = [];
     const inputFotos = document.getElementById('input-fotos');
     const listaPreview = document.getElementById('lista-fotos-preview');
 
     inputFotos.addEventListener('change', (e) => {
       const arquivos = Array.from(e.target.files);
       arquivos.forEach(arquivo => {
-        const url = URL.createObjectURL(arquivo);
-        fotosSimuladas.push({ nomeArquivo: arquivo.name, urlPreview: url });
+        const urlPreview = URL.createObjectURL(arquivo);
+        fotos.push({ nomeArquivo: arquivo.name, file: arquivo, urlPreview });
       });
       renderizarPreviews();
       inputFotos.value = '';
     });
 
     function renderizarPreviews() {
-      listaPreview.innerHTML = fotosSimuladas.map((f, idx) => `
+      listaPreview.innerHTML = fotos.map((f, idx) => `
         <div class="foto-preview">
           <img src="${f.urlPreview}" alt="${f.nomeArquivo}">
           <button type="button" class="remover-foto" data-idx="${idx}" aria-label="Remover foto">✕</button>
@@ -347,7 +368,7 @@
 
       listaPreview.querySelectorAll('.remover-foto').forEach(btn => {
         btn.addEventListener('click', () => {
-          fotosSimuladas.splice(Number(btn.dataset.idx), 1);
+          fotos.splice(Number(btn.dataset.idx), 1);
           renderizarPreviews();
         });
       });
@@ -371,8 +392,37 @@
       e.preventDefault();
       areaMensagem.innerHTML = '';
       btnRegistrar.disabled = true;
-      btnRegistrar.textContent = 'Registrando...';
 
+      const cidadeValor = document.getElementById('cidade').value.trim();
+      if (cidadeValor.toLowerCase() !== 'recife') {
+        mostrarErro('Só é possível registrar ocorrências no município do Recife.');
+        btnRegistrar.disabled = false;
+        return;
+      }
+
+      // Etapa 1 e 2: obter presigned URL e fazer upload direto no S3
+      let fotoOcorrencia = [];
+      if (fotos.length > 0) {
+        btnRegistrar.textContent = `Enviando ${fotos.length} foto(s)...`;
+        try {
+          fotoOcorrencia = await Promise.all(fotos.map(async (foto) => {
+            const { uploadUrl, key, bucket } = await Api.get(
+              `${CONFIG.REPORT_SERVICE_URL}/api/fotos/presigned-url?nomeArquivo=${encodeURIComponent(foto.nomeArquivo)}`
+            );
+            await Api.uploadS3(uploadUrl, foto.file);
+            return { nomeArquivo: foto.nomeArquivo, url: key, bucket };
+          }));
+        } catch (erro) {
+          console.error(erro);
+          mostrarErro(erro.status === 0 ? erro.message : 'Não foi possível fazer o upload das fotos. Tente novamente.');
+          btnRegistrar.disabled = false;
+          btnRegistrar.textContent = 'Registrar ocorrência';
+          return;
+        }
+      }
+
+      // Etapa 3: criar a ocorrência com a referência das fotos
+      btnRegistrar.textContent = 'Registrando...';
       const tipoOcorrencia = Number(form.querySelector('input[name="tipoOcorrencia"]:checked').value);
       const cep = document.getElementById('cep').value.replace(/\D/g, '');
 
@@ -386,13 +436,7 @@
           cep: Number(cep),
         },
         tipoOcorrencia,
-        // Upload real ainda não implementado — enviamos uma URL simulada
-        // por foto selecionada, mantendo o formato esperado pela API.
-        fotoOcorrencia: fotosSimuladas.map(f => ({
-          nomeArquivo: f.nomeArquivo,
-          url: `https://bucket-simulado.s3.amazonaws.com/${encodeURIComponent(f.nomeArquivo)}`,
-          bucket: 'bucket-simulado',
-        })),
+        fotoOcorrencia,
         latitude: coordenadas.latitude,
         longitude: coordenadas.longitude,
       };
