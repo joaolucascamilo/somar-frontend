@@ -357,6 +357,7 @@
         async (pos) => {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
+          const precisao = Math.round(pos.coords.accuracy);
           display.textContent = 'Verificando localização...';
 
           try {
@@ -386,7 +387,7 @@
               document.getElementById('cep').value = String(dados.cep).replace(/\D/g, '');
             }
 
-            display.textContent = `Campos preenchidos via GPS. Informe o número do endereço para concluir.`;
+            display.innerHTML = `Endereço preenchido via GPS (${lat.toFixed(5)}, ${lon.toFixed(5)}). <strong>Confira se os campos estão corretos</strong> antes de enviar — o GPS pode ser impreciso próximo a divisas entre municípios.`;
             display.className = 'coord-display ok';
             document.getElementById('numero').focus();
           } catch (erro) {
