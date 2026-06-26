@@ -134,8 +134,33 @@
       margin-top: 10px;
     }
 
+    .divisor-ou {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0 12px;
+      color: var(--grafite-400);
+      font-size: 0.78rem;
+    }
+    .divisor-ou::before,
+    .divisor-ou::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e3ddd0;
+    }
+    .label-sem-numero {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--grafite-600);
+      margin-top: 6px;
+      cursor: pointer;
+      font-weight: normal;
+    }
     .btn-localizacao {
-      margin-top: 8px;
+      width: 100%;
     }
     .coord-display {
       font-family: var(--fonte-mono);
@@ -186,7 +211,10 @@
           </div>
           <div class="campo">
             <label for="numero">Número</label>
-            <input type="number" id="numero" required placeholder="123">
+            <input type="number" id="numero" required placeholder="123" min="1">
+            <label class="label-sem-numero">
+              <input type="checkbox" id="sem-numero"> Sem número (S/N)
+            </label>
           </div>
         </div>
         <div class="campo-linha">
@@ -211,10 +239,14 @@
           </div>
         </div>
 
+        <div class="divisor-ou">
+          <span>ou</span>
+        </div>
+
         <button type="button" class="btn btn-secundario btn-localizacao" id="btn-geolocalizacao" style="border-color: var(--grafite-950); color: var(--grafite-950);">
-          📍 Usar minha localização atual
+          📍 Preencher automaticamente com minha localização atual
         </button>
-        <div class="coord-display" id="coord-display">Coordenadas não capturadas ainda.</div>
+        <div class="coord-display" id="coord-display"></div>
       </div>
 
       <div class="bloco-form">
@@ -241,6 +273,21 @@
   <script>
     montarNavbar('registrar');
     Auth.protegerPagina(['ROLE_CIDADAO']);
+
+    const inputNumero = document.getElementById('numero');
+    const checkSemNumero = document.getElementById('sem-numero');
+    checkSemNumero.addEventListener('change', () => {
+      if (checkSemNumero.checked) {
+        inputNumero.value = '';
+        inputNumero.disabled = true;
+        inputNumero.removeAttribute('required');
+        inputNumero.placeholder = 'S/N';
+      } else {
+        inputNumero.disabled = false;
+        inputNumero.setAttribute('required', '');
+        inputNumero.placeholder = '123';
+      }
+    });
 
     // Monta as opções de tipo de ocorrência a partir do enum compartilhado
     const gradeTipos = document.getElementById('grade-tipos');
@@ -318,18 +365,30 @@
               false
             );
 
-            if (dados.cidade !== 'Recife') {
-              display.textContent = `Fora do Recife (${dados.cidade || 'local desconhecido'}). Só é possível registrar ocorrências no município do Recife.`;
+            console.log('[reverse geocode] resposta da API:', dados);
+
+            const cidadeReversa = dados.cidade || dados.localidade || '';
+            if (cidadeReversa.toLowerCase() !== 'recife') {
+              display.textContent = `Fora do Recife (${cidadeReversa || 'local desconhecido'}). Só é possível registrar ocorrências no município do Recife.`;
               display.className = 'coord-display erro';
               return;
             }
 
             coordenadas.latitude = lat;
             coordenadas.longitude = lon;
-            document.getElementById('cidade').value = dados.cidade;
-            document.getElementById('estado').value = 'PE';
-            display.textContent = `Localização confirmada em Recife — ${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+
+            const rua = dados.logradouro || dados.rua || '';
+            if (rua) document.getElementById('rua').value = rua;
+            if (dados.bairro) document.getElementById('bairro').value = dados.bairro;
+            document.getElementById('cidade').value = cidadeReversa;
+            document.getElementById('estado').value = dados.uf || dados.estado || 'PE';
+            if (dados.cep) {
+              document.getElementById('cep').value = String(dados.cep).replace(/\D/g, '');
+            }
+
+            display.textContent = `Campos preenchidos via GPS. Informe o número do endereço para concluir.`;
             display.className = 'coord-display ok';
+            document.getElementById('numero').focus();
           } catch (erro) {
             display.textContent = 'Não foi possível verificar a localização. Tente novamente.';
             display.className = 'coord-display erro';
@@ -429,7 +488,7 @@
       const payload = {
         enderecoOcorrencia: {
           rua: document.getElementById('rua').value.trim(),
-          numero: Number(document.getElementById('numero').value),
+          numero: checkSemNumero.checked ? 0 : Number(inputNumero.value),
           bairro: document.getElementById('bairro').value.trim(),
           cidade: document.getElementById('cidade').value.trim(),
           estado: document.getElementById('estado').value.trim().toUpperCase(),
