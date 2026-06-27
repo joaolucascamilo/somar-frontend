@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/shared/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <style>
     .topo-pagina {
       padding: 40px 0 24px;
@@ -25,11 +26,12 @@
       padding: 32px 0 64px;
     }
 
+    /* Cards de indicadores */
     .grade-indicadores {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 16px;
-      margin-bottom: 36px;
+      margin-bottom: 24px;
     }
     .cartao-indicador {
       background: #fff;
@@ -61,7 +63,13 @@
       font-size: 2rem;
       color: var(--grafite-950);
     }
+    .cartao-indicador .subtexto {
+      font-size: 0.78rem;
+      color: var(--grafite-400);
+      margin-top: 4px;
+    }
 
+    /* Seções de gráficos */
     .secao-painel {
       background: #fff;
       border: 1px solid #e3ddd0;
@@ -71,9 +79,31 @@
     }
     .secao-painel h3 {
       font-size: 0.95rem;
-      margin-bottom: 16px;
+      margin-bottom: 20px;
+      color: var(--grafite-800);
     }
 
+    .grade-graficos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .grade-graficos .secao-painel {
+      margin-bottom: 0;
+    }
+    .canvas-wrapper {
+      position: relative;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .canvas-wrapper canvas {
+      max-height: 260px;
+    }
+
+    /* Ranking de críticas */
     .linha-ranking {
       display: flex;
       justify-content: space-between;
@@ -88,8 +118,49 @@
       font-size: 0.82rem;
     }
 
+    /* Tabela de top bairros */
+    .tabela-bairros {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .tabela-bairros th {
+      font-family: var(--fonte-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--grafite-400);
+      padding: 0 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid #e3ddd0;
+    }
+    .tabela-bairros td {
+      padding: 9px 8px;
+      border-bottom: 1px solid #f0ece1;
+      color: var(--grafite-800);
+    }
+    .tabela-bairros tr:last-child td { border-bottom: none; }
+    .tabela-bairros .col-num {
+      font-family: var(--fonte-display);
+      font-size: 1.1rem;
+      color: var(--grafite-950);
+      width: 48px;
+    }
+    .barra-inline {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--amarelo-sinal);
+      display: block;
+      margin-top: 4px;
+      min-width: 4px;
+    }
+
     @media (max-width: 900px) {
       .grade-indicadores { grid-template-columns: repeat(2, 1fr); }
+      .grade-graficos { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .grade-indicadores { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -104,14 +175,49 @@
   </div>
 
   <main class="container area-dashboard">
+
+    <!-- Indicadores -->
     <div class="grade-indicadores" id="grade-indicadores">
       <div class="carregando"><span class="spinner"></span> Calculando indicadores...</div>
     </div>
 
+    <!-- Linha 1: Status × Prioridade -->
+    <div class="grade-graficos">
+      <div class="secao-painel">
+        <h3>Distribuição por status</h3>
+        <div class="canvas-wrapper">
+          <canvas id="grafico-status"></canvas>
+        </div>
+      </div>
+      <div class="secao-painel">
+        <h3>Distribuição por prioridade</h3>
+        <div class="canvas-wrapper">
+          <canvas id="grafico-prioridade"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Linha 2: Tipo (largura total) -->
     <div class="secao-painel">
-      <h3>Ocorrências críticas em aberto</h3>
-      <div id="ranking-criticas">
-        <div class="carregando"><span class="spinner"></span> Carregando ranking...</div>
+      <h3>Ocorrências por tipo</h3>
+      <div class="canvas-wrapper">
+        <canvas id="grafico-tipos"></canvas>
+      </div>
+    </div>
+
+    <!-- Ranking de críticas + Top bairros -->
+    <div class="grade-graficos">
+      <div class="secao-painel">
+        <h3>Ocorrências críticas em aberto</h3>
+        <div id="ranking-criticas">
+          <div class="carregando"><span class="spinner"></span> Carregando ranking...</div>
+        </div>
+      </div>
+      <div class="secao-painel">
+        <h3>Bairros com mais ocorrências ativas</h3>
+        <div id="ranking-bairros">
+          <div class="carregando"><span class="spinner"></span> Carregando bairros...</div>
+        </div>
       </div>
     </div>
 
@@ -127,7 +233,201 @@
     montarNavbar('dashboard');
     Auth.protegerPagina(['ROLE_AGENTE_PREFEITURA']);
 
-    async function carregarIndicadores() {
+    Chart.defaults.font.family = "'Source Sans 3', sans-serif";
+    Chart.defaults.color = '#4b535c';
+
+    let graficos = {};
+
+    function criarGrafico(id, config) {
+      if (graficos[id]) graficos[id].destroy();
+      const ctx = document.getElementById(id).getContext('2d');
+      graficos[id] = new Chart(ctx, config);
+    }
+
+    function renderizarGraficoStatus(ocorrencias) {
+      const contagem = [1, 4, 3, 2].map(s => ocorrencias.filter(o => o.status === s).length);
+      const info = [1, 4, 3, 2].map(s => StatusOcorrencia[s]);
+      criarGrafico('grafico-status', {
+        type: 'doughnut',
+        data: {
+          labels: info.map(i => i.label),
+          datasets: [{
+            data: contagem,
+            backgroundColor: info.map(i => i.cor + 'CC'),
+            borderColor: info.map(i => i.cor),
+            borderWidth: 2,
+            hoverOffset: 6,
+          }],
+        },
+        options: {
+          cutout: '62%',
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { padding: 16, boxWidth: 12, font: { size: 13 } },
+            },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.parsed} ocorrência${ctx.parsed !== 1 ? 's' : ''}`,
+              },
+            },
+          },
+        },
+      });
+    }
+
+    function renderizarGraficoPrioridade(ocorrencias) {
+      const prioridades = ['CRITICA', 'ALTA', 'MEDIA', 'BAIXA'];
+      const contagem = prioridades.map(p => ocorrencias.filter(o => o.nivelPrioridade === p).length);
+      const info = prioridades.map(p => NivelPrioridade[p]);
+      criarGrafico('grafico-prioridade', {
+        type: 'bar',
+        data: {
+          labels: info.map(i => i.label),
+          datasets: [{
+            label: 'Ocorrências',
+            data: contagem,
+            backgroundColor: info.map(i => i.cor + 'BB'),
+            borderColor: info.map(i => i.cor),
+            borderWidth: 2,
+            borderRadius: 3,
+          }],
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0 },
+              grid: { color: '#f0ece1' },
+            },
+            x: { grid: { display: false } },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.parsed.y} ocorrência${ctx.parsed.y !== 1 ? 's' : ''}`,
+              },
+            },
+          },
+        },
+      });
+    }
+
+    function renderizarGraficoTipos(ocorrencias) {
+      const ativas = ocorrencias.filter(o => o.status !== 2 && o.status !== 3);
+      const tipoIds = Object.keys(TipoOcorrencia).map(Number);
+      const contagem = tipoIds.map(id => ativas.filter(o => o.tipo === id).length);
+      const labels = tipoIds.map(id => TipoOcorrencia[id].label);
+
+      const pares = tipoIds.map((id, i) => ({ label: labels[i], count: contagem[i] }))
+        .filter(p => p.count > 0)
+        .sort((a, b) => b.count - a.count);
+
+      criarGrafico('grafico-tipos', {
+        type: 'bar',
+        data: {
+          labels: pares.map(p => p.label),
+          datasets: [{
+            label: 'Ativas',
+            data: pares.map(p => p.count),
+            backgroundColor: '#2f669088',
+            borderColor: '#2f6690',
+            borderWidth: 2,
+            borderRadius: 3,
+          }],
+        },
+        options: {
+          indexAxis: 'y',
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { precision: 0 },
+              grid: { color: '#f0ece1' },
+            },
+            y: { grid: { display: false } },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.parsed.x} ocorrência${ctx.parsed.x !== 1 ? 's' : ''}`,
+              },
+            },
+          },
+        },
+      });
+    }
+
+function renderizarRankingCriticas(ocorrencias) {
+      const criticas = ocorrencias
+        .filter(o => o.status !== 3 && o.status !== 2 && (o.nivelPrioridade === 'CRITICA' || o.nivelPrioridade === 'ALTA'))
+        .slice(0, 8);
+
+      const container = document.getElementById('ranking-criticas');
+      if (criticas.length === 0) {
+        container.innerHTML = `<div class="estado-vazio"><span class="icone">✅</span>Nenhuma ocorrência crítica em aberto.</div>`;
+        return;
+      }
+      container.innerHTML = criticas.map(oc => {
+        const tipo = TipoOcorrencia[oc.tipo] || { label: 'Desconhecido', icone: '📌' };
+        const prioridade = NivelPrioridade[oc.nivelPrioridade] || { label: oc.nivelPrioridade, cor: '#999' };
+        const endereco = oc.endereco ? `${oc.endereco.rua}, ${oc.endereco.bairro}` : '—';
+        return `
+          <div class="linha-ranking">
+            <div>
+              <strong>${tipo.icone} ${tipo.label}</strong>
+              <div class="endereco-rank">${endereco}</div>
+            </div>
+            <span class="badge" style="background:${prioridade.cor}1A; color:${prioridade.cor};">${prioridade.label}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderizarRankingBairros(ocorrencias) {
+      const ativas = ocorrencias.filter(o => o.status !== 2 && o.status !== 3);
+      const contagem = {};
+      ativas.forEach(o => {
+        const bairro = o.endereco?.bairro;
+        if (bairro) contagem[bairro] = (contagem[bairro] || 0) + 1;
+      });
+
+      const container = document.getElementById('ranking-bairros');
+      const ranking = Object.entries(contagem)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+      if (ranking.length === 0) {
+        container.innerHTML = `<div class="estado-vazio"><span class="icone">📍</span>Nenhuma ocorrência ativa com bairro registrado.</div>`;
+        return;
+      }
+
+      const maximo = ranking[0][1];
+      container.innerHTML = `
+        <table class="tabela-bairros">
+          <thead>
+            <tr>
+              <th>Qtd.</th>
+              <th>Bairro</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${ranking.map(([bairro, total]) => `
+              <tr>
+                <td class="col-num">${total}</td>
+                <td>
+                  ${bairro}
+                  <span class="barra-inline" style="width:${Math.round((total / maximo) * 100)}%"></span>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function carregarDashboard() {
       const grade = document.getElementById('grade-indicadores');
       try {
         const ocorrencias = await Api.get(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias`);
@@ -136,6 +436,9 @@
         const registradas = ocorrencias.filter(o => o.status === 1).length;
         const emProcedimento = ocorrencias.filter(o => o.status === 4).length;
         const resolvidas = ocorrencias.filter(o => o.status === 3).length;
+        const canceladas = ocorrencias.filter(o => o.status === 2).length;
+        const ativas = total - resolvidas - canceladas;
+        const taxaResolucao = total > 0 ? Math.round((resolvidas / total) * 100) : 0;
 
         grade.innerHTML = `
           <div class="cartao-indicador" style="--cor-indicador: var(--azul-info);">
@@ -153,43 +456,25 @@
           <div class="cartao-indicador" style="--cor-indicador: var(--verde-resolvido);">
             <span class="rotulo">Resolvidas</span>
             <div class="numero">${resolvidas}</div>
+            <div class="subtexto">${taxaResolucao}% do total</div>
           </div>
         `;
 
-        // Ranking simples: ocorrências não resolvidas, com nível mapeado
-        // como CRITICA ou ALTA, mostradas em destaque no painel.
-        const criticas = ocorrencias
-          .filter(o => o.status !== 3 && o.status !== 2 && (o.nivelPrioridade === 'CRITICA' || o.nivelPrioridade === 'ALTA'))
-          .slice(0, 8);
-
-        const rankingContainer = document.getElementById('ranking-criticas');
-        if (criticas.length === 0) {
-          rankingContainer.innerHTML = `<div class="estado-vazio"><span class="icone">✅</span>Nenhuma ocorrência crítica em aberto.</div>`;
-        } else {
-          rankingContainer.innerHTML = criticas.map(oc => {
-            const tipo = TipoOcorrencia[oc.tipo] || { label: 'Desconhecido', icone: '📌' };
-            const prioridade = NivelPrioridade[oc.nivelPrioridade] || { label: oc.nivelPrioridade, cor: '#999' };
-            const endereco = oc.endereco ? `${oc.endereco.rua}, ${oc.endereco.bairro}` : '';
-            return `
-              <div class="linha-ranking">
-                <div>
-                  <strong>${tipo.icone} ${tipo.label}</strong>
-                  <div class="endereco-rank">${endereco}</div>
-                </div>
-                <span class="badge" style="background:${prioridade.cor}1A; color:${prioridade.cor};">${prioridade.label}</span>
-              </div>
-            `;
-          }).join('');
-        }
+        renderizarGraficoStatus(ocorrencias);
+        renderizarGraficoPrioridade(ocorrencias);
+        renderizarGraficoTipos(ocorrencias);
+        renderizarRankingCriticas(ocorrencias);
+        renderizarRankingBairros(ocorrencias);
 
       } catch (erro) {
         console.error(erro);
         grade.innerHTML = `<div class="aviso-form">Não foi possível carregar os indicadores. ${erro.message || ''}</div>`;
         document.getElementById('ranking-criticas').innerHTML = '';
+        document.getElementById('ranking-bairros').innerHTML = '';
       }
     }
 
-    carregarIndicadores();
+    carregarDashboard();
   </script>
 </body>
 </html>
