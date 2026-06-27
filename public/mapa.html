@@ -169,6 +169,19 @@
       OUTROS: 99,
     };
 
+    // Lookup reverso: nome do enum → ID numérico (ex: "BURACO_VIA" → 1)
+    const TIPO_NOME_PARA_ID = Object.fromEntries(
+      Object.entries(TipoOcorrencia).map(([id, info]) => [info.nome, Number(id)])
+    );
+
+    // Normaliza oc.tipo para ID numérico, independente do que o back-end retorna
+    function tipoParaId(tipo) {
+      if (tipo == null) return 99;
+      const n = Number(tipo);
+      if (!isNaN(n) && n > 0) return n;
+      return TIPO_NOME_PARA_ID[tipo] ?? CATEGORIA_PARA_TIPO[tipo] ?? 99;
+    }
+
     function criarIcone(cor) {
       return L.divIcon({
         html: `<div style="background:${cor};width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>`,
@@ -196,7 +209,7 @@
       pontos.forEach(p => {
         if (p.latitude == null || p.longitude == null) return;
         const oc = mapaOcorrencias.get(p.id);
-        const tipoId = oc ? oc.tipo : (CATEGORIA_PARA_TIPO[p.categoria] ?? 99);
+        const tipoId = oc ? tipoParaId(oc.tipo) : (CATEGORIA_PARA_TIPO[p.categoria] ?? 99);
         const tipoInfo = TipoOcorrencia[tipoId] || { label: p.categoria || 'Ocorrência', icone: '📌' };
         const cor = corDoMarcador(oc);
         const status = oc ? (StatusOcorrencia[oc.status] || { label: '—', cor: '#999' }) : null;
@@ -234,7 +247,7 @@
       }
 
       container.innerHTML = ocorrencias.map(oc => {
-        const tipo = TipoOcorrencia[oc.tipo] || { label: 'Tipo desconhecido', icone: '📌' };
+        const tipo = TipoOcorrencia[tipoParaId(oc.tipo)] || { label: 'Tipo desconhecido', icone: '📌' };
         const status = StatusOcorrencia[oc.status] || { label: 'Desconhecido', cor: '#999' };
         const endereco = oc.endereco
           ? `${oc.endereco.rua}, ${oc.endereco.numero} — ${oc.endereco.bairro}`
@@ -307,7 +320,7 @@
       }
 
       renderizarLista(todasOcorrencias.filter(
-        oc => String(oc.tipo) === tipoSelecionado
+        oc => String(tipoParaId(oc.tipo)) === tipoSelecionado
       ));
 
       const categoriasFiltro = new Set(
