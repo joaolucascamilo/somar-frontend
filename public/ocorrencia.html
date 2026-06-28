@@ -75,6 +75,28 @@
       border-radius: 4px;
       border: 1px solid #e3ddd0;
     }
+    .bloco-detalhes {
+      background: #fef9e7;
+      border: 1.5px solid var(--amarelo-sinal-escuro);
+      border-radius: 4px;
+      padding: 14px 18px;
+      margin: 20px 0;
+    }
+    .bloco-detalhes .rotulo {
+      font-family: var(--fonte-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 6px;
+    }
+    .bloco-detalhes p {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--grafite-900);
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -125,6 +147,13 @@
             }).join('')}</div>`
           : `<p style="color: var(--grafite-600); font-size: 0.9rem;">Nenhuma foto anexada.</p>`;
 
+        const detalhesHtml = (oc.tipo === 99 && oc.detalhes)
+          ? `<div class="bloco-detalhes">
+               <span class="rotulo">📌 Descrição da ocorrência</span>
+               <p>${oc.detalhes}</p>
+             </div>`
+          : '';
+
         container.innerHTML = `
           <div class="cabeca-detalhe">
             <h1>${tipo.icone} ${tipo.label}</h1>
@@ -148,6 +177,8 @@
               <span class="valor">#${String(oc.id).padStart(5, '0')}</span>
             </div>
           </div>
+
+          ${detalhesHtml}
 
           <h3 style="font-size: 0.95rem; margin-bottom: 8px;">Fotos</h3>
           ${fotosHtml}

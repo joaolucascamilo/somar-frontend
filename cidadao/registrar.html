@@ -227,6 +227,20 @@
     .campo-outros textarea::placeholder {
       color: var(--grafite-400);
     }
+    .contador-chars {
+      display: block;
+      text-align: right;
+      font-family: var(--fonte-mono);
+      font-size: 0.72rem;
+      color: var(--grafite-400);
+      margin-top: 5px;
+    }
+    .contador-chars.quase {
+      color: var(--amarelo-sinal-escuro);
+    }
+    .contador-chars.limite {
+      color: #DC2626;
+    }
   </style>
 </head>
 <body>
@@ -250,7 +264,8 @@
         </div>
         <div class="campo-outros" id="campo-outros">
           <p class="campo-outros-titulo">📌 Qual é a ocorrência?</p>
-          <textarea id="descricao-outros" placeholder="Descreva o problema com o máximo de detalhes possível…"></textarea>
+          <textarea id="detalhes-outros" maxlength="255" placeholder="Descreva o problema com o máximo de detalhes possível…"></textarea>
+          <span class="contador-chars" id="contador-detalhes">0 / 255</span>
         </div>
       </div>
 
@@ -354,17 +369,26 @@
     `).join('');
 
     const campoOutros = document.getElementById('campo-outros');
-    const descricaoOutros = document.getElementById('descricao-outros');
+    const detalhesOutros = document.getElementById('detalhes-outros');
+    const contadorDetalhes = document.getElementById('contador-detalhes');
+
+    detalhesOutros.addEventListener('input', () => {
+      const len = detalhesOutros.value.length;
+      contadorDetalhes.textContent = `${len} / 255`;
+      contadorDetalhes.className = 'contador-chars' + (len >= 255 ? ' limite' : len >= 220 ? ' quase' : '');
+    });
 
     function atualizarCampoOutros() {
       const selecionado = form.querySelector('input[name="tipoOcorrencia"]:checked');
       if (selecionado && selecionado.value === '99') {
         campoOutros.classList.add('visivel');
-        descricaoOutros.setAttribute('required', '');
+        detalhesOutros.setAttribute('required', '');
       } else {
         campoOutros.classList.remove('visivel');
-        descricaoOutros.removeAttribute('required');
-        descricaoOutros.value = '';
+        detalhesOutros.removeAttribute('required');
+        detalhesOutros.value = '';
+        contadorDetalhes.textContent = '0 / 255';
+        contadorDetalhes.className = 'contador-chars';
       }
     }
 
@@ -565,7 +589,7 @@
           cep: Number(cep),
         },
         tipoOcorrencia,
-        descricao: tipoOcorrencia === 99 ? descricaoOutros.value.trim() : null,
+        detalhes: tipoOcorrencia === 99 ? detalhesOutros.value.trim() : null,
         fotoOcorrencia,
         latitude: coordenadas.latitude,
         longitude: coordenadas.longitude,
