@@ -179,6 +179,54 @@
     .status-cep.ok       { color: #16A34A; }
     .coord-display.erro  { color: #DC2626; }
     .coord-display.ok    { color: #16A34A; }
+
+    .campo-outros {
+      display: none;
+      margin-top: 18px;
+      background: #fef9e7;
+      border: 1.5px solid var(--amarelo-sinal-escuro);
+      border-radius: 4px;
+      padding: 16px 18px;
+      animation: entrar 0.18s ease;
+    }
+    @keyframes entrar {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .campo-outros.visivel {
+      display: block;
+    }
+    .campo-outros .campo-outros-titulo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--fonte-display);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--amarelo-sinal-escuro);
+      margin-bottom: 10px;
+    }
+    .campo-outros textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid #d8d2c2;
+      border-radius: 4px;
+      background: #fff;
+      color: var(--grafite-950);
+      font-size: 0.95rem;
+      resize: vertical;
+      min-height: 90px;
+      transition: border-color 0.15s ease;
+    }
+    .campo-outros textarea:focus {
+      outline: none;
+      border-color: var(--amarelo-sinal-escuro);
+      box-shadow: 0 0 0 3px rgba(242, 183, 5, 0.25);
+    }
+    .campo-outros textarea::placeholder {
+      color: var(--grafite-400);
+    }
   </style>
 </head>
 <body>
@@ -199,6 +247,10 @@
         <h3>1. Tipo do problema</h3>
         <div class="grade-tipos" id="grade-tipos">
           <!-- preenchido via JS a partir de enums.js -->
+        </div>
+        <div class="campo-outros" id="campo-outros">
+          <p class="campo-outros-titulo">📌 Qual é a ocorrência?</p>
+          <textarea id="descricao-outros" placeholder="Descreva o problema com o máximo de detalhes possível…"></textarea>
         </div>
       </div>
 
@@ -300,6 +352,23 @@
         </span>
       </label>
     `).join('');
+
+    const campoOutros = document.getElementById('campo-outros');
+    const descricaoOutros = document.getElementById('descricao-outros');
+
+    function atualizarCampoOutros() {
+      const selecionado = form.querySelector('input[name="tipoOcorrencia"]:checked');
+      if (selecionado && selecionado.value === '99') {
+        campoOutros.classList.add('visivel');
+        descricaoOutros.setAttribute('required', '');
+      } else {
+        campoOutros.classList.remove('visivel');
+        descricaoOutros.removeAttribute('required');
+        descricaoOutros.value = '';
+      }
+    }
+
+    gradeTipos.addEventListener('change', atualizarCampoOutros);
 
     // Busca de CEP via ms-geo → ViaCEP
     const statusCep = document.getElementById('status-cep');
@@ -496,6 +565,7 @@
           cep: Number(cep),
         },
         tipoOcorrencia,
+        descricao: tipoOcorrencia === 99 ? descricaoOutros.value.trim() : null,
         fotoOcorrencia,
         latitude: coordenadas.latitude,
         longitude: coordenadas.longitude,
