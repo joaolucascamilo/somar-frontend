@@ -351,7 +351,7 @@
           </div>
           <div class="campo">
             <label for="cep">CEP</label>
-            <input type="text" id="cep" required placeholder="01310100" maxlength="8" inputmode="numeric">
+            <input type="text" id="cep" required placeholder="00000-000" maxlength="9" inputmode="numeric">
             <small id="status-cep" class="status-cep"></small>
           </div>
         </div>
@@ -497,7 +497,10 @@
     }
 
     document.getElementById('cep').addEventListener('input', (e) => {
-      const digits = e.target.value.replace(/\D/g, '');
+      const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+      e.target.value = digits.length > 5
+        ? digits.slice(0, 5) + '-' + digits.slice(5)
+        : digits;
       if (digits.length === 8) buscarCep(digits);
       else if (statusCep.textContent) setStatusCep('');
     });
