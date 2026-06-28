@@ -323,12 +323,11 @@
         oc => String(tipoParaId(oc.tipo)) === tipoSelecionado
       ));
 
-      const categoriasFiltro = new Set(
-        Object.entries(CATEGORIA_PARA_TIPO)
-          .filter(([, id]) => String(id) === tipoSelecionado)
-          .map(([cat]) => cat)
-      );
-      renderizarMarcadores(pontosMapa.filter(p => categoriasFiltro.has(p.categoria)));
+      renderizarMarcadores(pontosMapa.filter(p => {
+        const oc = mapaOcorrencias.get(p.id);
+        const tipoId = oc ? tipoParaId(oc.tipo) : (CATEGORIA_PARA_TIPO[p.categoria] ?? 99);
+        return String(tipoId) === tipoSelecionado;
+      }));
     });
 
     inicializar();
