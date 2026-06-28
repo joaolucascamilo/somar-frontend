@@ -104,7 +104,15 @@
     .acoes-modal { display: flex; gap: 10px; justify-content: flex-end; }
 
     @media (max-width: 900px) {
-      table.tabela-ocorrencias { display: block; overflow-x: auto; }
+      table.tabela-ocorrencias { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    }
+
+    @media (max-width: 600px) {
+      .barra-filtros { flex-direction: column; }
+      .barra-filtros select { width: 100%; }
+      .caixa-modal { margin: 16px; padding: 20px; width: auto; max-width: none; }
+      .topo-pagina { padding: 28px 0 18px; }
+      .area-gestao { padding: 24px 0 48px; }
     }
   </style>
 </head>

@@ -143,6 +143,24 @@
       color: var(--grafite-900);
       line-height: 1.5;
     }
+
+    @media (max-width: 640px) {
+      .area-detalhe {
+        padding: 28px 0 48px;
+      }
+      .grade-detalhe {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .galeria-fotos {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .cabeca-detalhe {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+    }
   </style>
 </head>
 <body>

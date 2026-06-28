@@ -84,6 +84,18 @@
     .historico-item .pontos.negativo {
       color: var(--vermelho-critico);
     }
+
+    @media (max-width: 600px) {
+      .area-perfil { padding: 28px 0 48px; }
+      .cartao-resumo {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+        padding: 24px 20px;
+      }
+      .pontuacao-grande { text-align: left; }
+      .pontuacao-grande .numero { font-size: 2rem; }
+    }
   </style>
 </head>
 <body>

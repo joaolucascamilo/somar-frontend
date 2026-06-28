@@ -45,7 +45,12 @@ function montarNavbar(paginaAtiva = '') {
           <span class="selo">TCC</span>
           <span class="nome">SOMAR</span>
         </a>
-        <nav class="nav-links" aria-label="Navegação principal">
+        <button class="btn-hamburger" id="btn-hamburger" aria-label="Abrir menu" aria-expanded="false">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <nav class="nav-links" id="nav-links-main" aria-label="Navegação principal">
           ${linksEsquerda}
           ${linksDireita}
         </nav>
@@ -57,6 +62,22 @@ function montarNavbar(paginaAtiva = '') {
   if (paginaAtiva) {
     const ativo = root.querySelector(`[data-id="${paginaAtiva}"]`);
     if (ativo) ativo.classList.add('ativo');
+  }
+
+  const hamburger = document.getElementById('btn-hamburger');
+  const navMain = document.getElementById('nav-links-main');
+  if (hamburger && navMain) {
+    hamburger.addEventListener('click', () => {
+      const aberta = navMain.classList.toggle('aberta');
+      hamburger.setAttribute('aria-expanded', String(aberta));
+    });
+    // fecha o menu ao clicar em qualquer link
+    navMain.addEventListener('click', (e) => {
+      if (e.target.tagName === 'A' || e.target.closest('a')) {
+        navMain.classList.remove('aberta');
+        hamburger.setAttribute('aria-expanded', 'false');
+      }
+    });
   }
 
   const btnLogout = document.getElementById('btn-logout');
