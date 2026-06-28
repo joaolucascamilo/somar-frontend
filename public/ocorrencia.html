@@ -74,6 +74,52 @@
       object-fit: cover;
       border-radius: 4px;
       border: 1px solid #e3ddd0;
+      cursor: zoom-in;
+      transition: opacity 0.15s ease;
+    }
+    .galeria-fotos img:hover {
+      opacity: 0.88;
+    }
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    .lightbox.aberto {
+      display: flex;
+    }
+    .lightbox img {
+      max-width: 92vw;
+      max-height: 92vh;
+      object-fit: contain;
+      border-radius: 4px;
+      cursor: default;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .lightbox-fechar {
+      position: fixed;
+      top: 14px;
+      right: 18px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      cursor: pointer;
+      z-index: 10000;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox-fechar:hover {
+      background: rgba(255,255,255,0.28);
     }
     .bloco-detalhes {
       background: #fef9e7;
@@ -101,6 +147,11 @@
 </head>
 <body>
   <div id="navbar-root"></div>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Visualizar foto">
+    <button class="lightbox-fechar" id="lightbox-fechar" aria-label="Fechar foto">✕</button>
+    <img id="lightbox-img" src="" alt="">
+  </div>
 
   <main class="container area-detalhe">
     <a href="/public/mapa.html" class="voltar">&larr; Voltar ao mapa</a>
@@ -143,7 +194,7 @@
               const src = f.url.startsWith('http')
                 ? f.url
                 : `https://${f.bucket}.s3.amazonaws.com/${f.url}`;
-              return `<img src="${src}" alt="${f.nomeArquivo || 'Foto da ocorrência'}" loading="lazy">`;
+              return `<img src="${src}" alt="${f.nomeArquivo || 'Foto da ocorrência'}" loading="lazy" title="Clique para ampliar">`;
             }).join('')}</div>`
           : `<p style="color: var(--grafite-600); font-size: 0.9rem;">Nenhuma foto anexada.</p>`;
 
@@ -183,6 +234,10 @@
           <h3 style="font-size: 0.95rem; margin-bottom: 8px;">Fotos</h3>
           ${fotosHtml}
         `;
+
+        container.querySelectorAll('.galeria-fotos img').forEach(img => {
+          img.addEventListener('click', () => abrirLightbox(img.src, img.alt));
+        });
       } catch (erro) {
         console.error(erro);
         if (erro.status === 404) {
@@ -194,6 +249,26 @@
     }
 
     carregarDetalhe();
+
+    function abrirLightbox(src, alt) {
+      const lb = document.getElementById('lightbox');
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox-img').alt = alt || '';
+      lb.classList.add('aberto');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function fecharLightbox() {
+      document.getElementById('lightbox').classList.remove('aberto');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('lightbox').addEventListener('click', fecharLightbox);
+    document.getElementById('lightbox-fechar').addEventListener('click', (e) => {
+      e.stopPropagation();
+      fecharLightbox();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharLightbox(); });
   </script>
 </body>
 </html>

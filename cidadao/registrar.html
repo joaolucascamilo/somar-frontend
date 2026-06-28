@@ -98,7 +98,7 @@
     .zona-fotos input { display: none; }
     .lista-fotos-preview {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 10px;
       margin-top: 14px;
     }
@@ -113,20 +113,80 @@
       aspect-ratio: 1;
       object-fit: cover;
       display: block;
+      cursor: zoom-in;
     }
     .foto-preview .remover-foto {
       position: absolute;
-      top: 4px;
-      right: 4px;
-      background: rgba(20,23,26,0.75);
+      top: 6px;
+      right: 6px;
+      background: rgba(20,23,26,0.78);
       color: #fff;
       border: none;
       border-radius: 50%;
-      width: 22px;
-      height: 22px;
+      width: 26px;
+      height: 26px;
       cursor: pointer;
-      font-size: 0.75rem;
-      line-height: 1;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+    .foto-preview .remover-foto:hover {
+      background: rgba(220,38,38,0.9);
+    }
+    .zona-fotos-oculta {
+      display: none !important;
+    }
+    .limite-fotos {
+      font-size: 0.78rem;
+      color: var(--grafite-400);
+      margin-top: 8px;
+    }
+    .limite-fotos.atingido {
+      color: var(--amarelo-sinal-escuro);
+      font-weight: 600;
+    }
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    .lightbox.aberto {
+      display: flex;
+    }
+    .lightbox img {
+      max-width: 92vw;
+      max-height: 92vh;
+      object-fit: contain;
+      border-radius: 4px;
+      cursor: default;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    .lightbox-fechar {
+      position: fixed;
+      top: 14px;
+      right: 18px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      cursor: pointer;
+      z-index: 10000;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox-fechar:hover {
+      background: rgba(255,255,255,0.28);
     }
     .nota-simulacao {
       font-size: 0.78rem;
@@ -323,6 +383,7 @@
           <span style="font-size: 1.6rem; display:block; margin-bottom: 8px;">📷</span>
           Toque para selecionar fotos ou arraste aqui
         </label>
+        <p class="limite-fotos" id="limite-fotos">Máximo de 2 fotos</p>
         <div class="lista-fotos-preview" id="lista-fotos-preview"></div>
       </div>
 
@@ -331,6 +392,11 @@
       </button>
     </form>
   </main>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Visualizar foto">
+    <button class="lightbox-fechar" id="lightbox-fechar" aria-label="Fechar foto">✕</button>
+    <img id="lightbox-img" src="" alt="">
+  </div>
 
   <script src="/shared/config.js"></script>
   <script src="/shared/auth.js"></script>
@@ -497,13 +563,16 @@
       );
     });
 
+    const MAX_FOTOS = 2;
     let fotos = [];
     const inputFotos = document.getElementById('input-fotos');
     const listaPreview = document.getElementById('lista-fotos-preview');
+    const limiteFotos = document.getElementById('limite-fotos');
 
     inputFotos.addEventListener('change', (e) => {
       const arquivos = Array.from(e.target.files);
-      arquivos.forEach(arquivo => {
+      const disponiveis = MAX_FOTOS - fotos.length;
+      arquivos.slice(0, disponiveis).forEach(arquivo => {
         const urlPreview = URL.createObjectURL(arquivo);
         fotos.push({ nomeArquivo: arquivo.name, file: arquivo, urlPreview });
       });
@@ -514,7 +583,7 @@
     function renderizarPreviews() {
       listaPreview.innerHTML = fotos.map((f, idx) => `
         <div class="foto-preview">
-          <img src="${f.urlPreview}" alt="${f.nomeArquivo}">
+          <img src="${f.urlPreview}" alt="${f.nomeArquivo}" data-idx="${idx}">
           <button type="button" class="remover-foto" data-idx="${idx}" aria-label="Remover foto">✕</button>
         </div>
       `).join('');
@@ -525,7 +594,48 @@
           renderizarPreviews();
         });
       });
+
+      listaPreview.querySelectorAll('.foto-preview img').forEach(img => {
+        img.addEventListener('click', () => {
+          const idx = Number(img.dataset.idx);
+          abrirLightbox(fotos[idx].urlPreview, fotos[idx].nomeArquivo);
+        });
+      });
+
+      const zonaFotos = document.getElementById('zona-fotos');
+      if (fotos.length >= MAX_FOTOS) {
+        zonaFotos.classList.add('zona-fotos-oculta');
+        limiteFotos.textContent = 'Limite de 2 fotos atingido. Remova uma foto para adicionar outra.';
+        limiteFotos.classList.add('atingido');
+      } else {
+        zonaFotos.classList.remove('zona-fotos-oculta');
+        const restantes = MAX_FOTOS - fotos.length;
+        limiteFotos.textContent = fotos.length === 0
+          ? 'Máximo de 2 fotos'
+          : `${fotos.length}/2 foto(s) adicionada(s). Você pode adicionar mais ${restantes}.`;
+        limiteFotos.classList.remove('atingido');
+      }
     }
+
+    function abrirLightbox(src, alt) {
+      const lb = document.getElementById('lightbox');
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox-img').alt = alt || '';
+      lb.classList.add('aberto');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function fecharLightbox() {
+      document.getElementById('lightbox').classList.remove('aberto');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('lightbox').addEventListener('click', fecharLightbox);
+    document.getElementById('lightbox-fechar').addEventListener('click', (e) => {
+      e.stopPropagation();
+      fecharLightbox();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharLightbox(); });
 
     // Submissão do formulário
     const form = document.getElementById('form-ocorrencia');
