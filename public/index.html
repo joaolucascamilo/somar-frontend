@@ -281,6 +281,70 @@
       margin-bottom: 28px;
     }
 
+    /* Seção: documentação das APIs */
+    .secao-api {
+      background: var(--grafite-950);
+      color: var(--osso-100);
+    }
+    .secao-api .secao-cabeca p {
+      color: var(--grafite-400);
+    }
+    .grade-apis {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .cartao-api {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: var(--osso-100);
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .cartao-api:hover {
+      border-color: var(--amarelo-sinal);
+      background: rgba(242,183,5,0.06);
+    }
+    .api-icone {
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+    .api-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .api-nome {
+      display: block;
+      font-family: var(--fonte-mono);
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      margin-bottom: 3px;
+      color: #fff;
+    }
+    .api-desc {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--grafite-400);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .api-seta {
+      font-size: 0.9rem;
+      color: var(--amarelo-sinal);
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+    .cartao-api:hover .api-seta {
+      opacity: 1;
+    }
+
     @media (max-width: 900px) {
       .hero .container { grid-template-columns: 1fr; }
       .hero-ficha { transform: none; }
@@ -289,6 +353,7 @@
       .passo::after { display: none; }
       .grade-perfis { grid-template-columns: 1fr; }
       .hero h1 { font-size: 2.2rem; }
+      .grade-apis { grid-template-columns: repeat(2, 1fr); }
     }
 
     @media (max-width: 480px) {
@@ -300,6 +365,7 @@
       .grade-problemas { grid-template-columns: 1fr; }
       .cta-final { padding: 64px 0; }
       .cta-final h2 { font-size: 1.6rem; }
+      .grade-apis { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -446,6 +512,18 @@
       </div>
     </section>
 
+    <!-- DOCUMENTAÇÃO DAS APIS -->
+    <section class="secao secao-api">
+      <div class="container">
+        <div class="secao-cabeca">
+          <span class="eyebrow">Desenvolvedores</span>
+          <h2>Documentação das APIs.</h2>
+          <p>Cada microsserviço expõe uma documentação interativa via Swagger UI. Explore endpoints, schemas e exemplos diretamente no navegador.</p>
+        </div>
+        <div class="grade-apis" id="grade-apis"></div>
+      </div>
+    </section>
+
     <!-- CTA FINAL -->
     <section class="cta-final">
       <div class="container">
@@ -467,6 +545,25 @@
   <script src="/shared/navbar.js"></script>
   <script>
     montarNavbar('home');
+
+    const SERVICOS_API = [
+      { icone: '📋', nome: 'Report Service',      desc: 'Registro e consulta de ocorrências',    url: CONFIG.REPORT_SERVICE_URL },
+      { icone: '👤', nome: 'User Service',         desc: 'Autenticação e perfis de usuário',       url: CONFIG.USER_SERVICE_URL },
+      { icone: '🔄', nome: 'Workflow Service',     desc: 'Transições de status e histórico',       url: CONFIG.WORKFLOW_SERVICE_URL },
+      { icone: '📍', nome: 'Geo Service',          desc: 'Geocodificação e mapa de ocorrências',   url: CONFIG.GEO_SERVICE_URL },
+      { icone: '⚡', nome: 'Priorização Service', desc: 'Cálculo e ranking de prioridades',       url: CONFIG.PRIORIZACAO_SERVICE_URL },
+    ];
+
+    document.getElementById('grade-apis').innerHTML = SERVICOS_API.map(s => `
+      <a href="${s.url}/swagger-ui.html" target="_blank" rel="noopener" class="cartao-api">
+        <span class="api-icone">${s.icone}</span>
+        <div class="api-info">
+          <span class="api-nome">${s.nome}</span>
+          <span class="api-desc">${s.desc}</span>
+        </div>
+        <span class="api-seta">↗</span>
+      </a>
+    `).join('');
   </script>
 </body>
 </html>
