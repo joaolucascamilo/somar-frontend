@@ -40,7 +40,7 @@
     }
     .grade-detalhe {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
       margin: 28px 0;
     }
@@ -149,7 +149,7 @@
         padding: 28px 0 48px;
       }
       .grade-detalhe {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
       }
       .galeria-fotos {
@@ -244,6 +244,10 @@
             <div class="bloco-info">
               <span class="rotulo">Protocolo</span>
               <span class="valor">#${String(oc.id).padStart(5, '0')}</span>
+            </div>
+            <div class="bloco-info">
+              <span class="rotulo">Apoios</span>
+              <span class="valor">${oc.quantidadeDenuncias || 0}</span>
             </div>
           </div>
 

@@ -321,6 +321,94 @@
         padding: 28px 0 18px;
       }
     }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 23, 26, 0.72);
+      z-index: 9000;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.aberto {
+      display: flex;
+    }
+    .modal-caixa {
+      background: #fff;
+      border-radius: 6px;
+      padding: 28px 30px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+      position: relative;
+    }
+    .modal-fechar {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      color: var(--grafite-400);
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .modal-fechar:hover {
+      background: #f0ece1;
+      color: var(--grafite-950);
+    }
+    .modal-eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--amarelo-sinal-escuro);
+      margin: 0 0 8px;
+    }
+    .modal-titulo {
+      font-family: var(--fonte-corpo);
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+    .modal-endereco {
+      font-size: 0.88rem;
+      color: var(--grafite-600);
+      margin: 0 0 12px;
+    }
+    .modal-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .modal-meta span {
+      font-family: var(--fonte-mono);
+      font-size: 0.78rem;
+      color: var(--grafite-600);
+      background: #f5f2ea;
+      padding: 4px 10px;
+      border-radius: 3px;
+    }
+    .modal-descricao {
+      font-size: 0.88rem;
+      color: var(--grafite-700);
+      margin: 0 0 22px;
+      line-height: 1.55;
+    }
+    .modal-acoes {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
@@ -412,6 +500,24 @@
       </button>
     </form>
   </main>
+
+  <div id="modal-apoio" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-titulo-texto">
+    <div class="modal-caixa">
+      <button type="button" class="modal-fechar" id="btn-fechar-modal" aria-label="Fechar">✕</button>
+      <p class="modal-eyebrow">Ocorrência semelhante encontrada</p>
+      <h2 class="modal-titulo" id="modal-titulo-texto"></h2>
+      <p class="modal-endereco" id="modal-endereco"></p>
+      <div class="modal-meta">
+        <span id="modal-protocolo"></span>
+        <span id="modal-apoios"></span>
+      </div>
+      <p class="modal-descricao">Outra pessoa já registrou esse problema nessa área. Você pode apoiar a ocorrência existente para aumentar sua prioridade, ou registrar uma nova se for um local diferente.</p>
+      <div class="modal-acoes">
+        <button type="button" class="btn btn-primario" id="btn-confirmar-apoio">Apoiar esta ocorrência</button>
+        <button type="button" class="btn btn-secundario" id="btn-registrar-nova">Registrar como nova ocorrência</button>
+      </div>
+    </div>
+  </div>
 
   <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Visualizar foto">
     <button class="lightbox-fechar" id="lightbox-fechar" aria-label="Fechar foto">✕</button>
@@ -674,19 +780,103 @@
       areaMensagem.scrollIntoView({ behavior: 'smooth' });
     }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      areaMensagem.innerHTML = '';
+    // --- Modal de apoio ---
+    let ocorrenciaSemelhante = null;
+
+    function abrirModalApoio(oc) {
+      ocorrenciaSemelhante = oc;
+      const tipo = TipoOcorrencia[oc.tipo] || { label: 'Desconhecido', icone: '📌' };
+      const num = oc.endereco?.numero;
+      const numStr = (!num || num === 0) ? 'S/N' : num;
+      const endereco = oc.endereco
+        ? `${oc.endereco.rua}, ${numStr} — ${oc.endereco.bairro}`
+        : 'Endereço não informado';
+      const apoios = oc.quantidadeDenuncias || 0;
+
+      document.getElementById('modal-titulo-texto').textContent = `${tipo.icone} ${tipo.label}`;
+      document.getElementById('modal-endereco').textContent = endereco;
+      document.getElementById('modal-protocolo').textContent = `Protocolo #${String(oc.id).padStart(5, '0')}`;
+      document.getElementById('modal-apoios').textContent = apoios === 0
+        ? 'Nenhum apoio ainda'
+        : `${apoios} pessoa${apoios !== 1 ? 's' : ''} ${apoios !== 1 ? 'apoiaram' : 'apoiou'}`;
+
+      document.getElementById('modal-apoio').classList.add('aberto');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function fecharModalApoio() {
+      document.getElementById('modal-apoio').classList.remove('aberto');
+      document.body.style.overflow = '';
+      ocorrenciaSemelhante = null;
+    }
+
+    document.getElementById('btn-confirmar-apoio').addEventListener('click', async () => {
+      if (!ocorrenciaSemelhante) return;
+      const btn = document.getElementById('btn-confirmar-apoio');
+      btn.disabled = true;
+      btn.textContent = 'Registrando apoio...';
+      try {
+        await Api.post(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/${ocorrenciaSemelhante.id}/apoiar`, {});
+        fecharModalApoio();
+        mostrarSucesso(`Apoio registrado! Protocolo #${String(ocorrenciaSemelhante.id).padStart(5, '0')}. Redirecionando...`);
+        setTimeout(() => { window.location.href = '/cidadao/minhas-ocorrencias.html'; }, 1500);
+      } catch (erro) {
+        // Erro sem status HTTP = falha ao parsear resposta vazia (ex: 204 No Content) — o apoio foi registrado
+        if (!erro.status || erro.status < 400) {
+          fecharModalApoio();
+          mostrarSucesso(`Apoio registrado! Protocolo #${String(ocorrenciaSemelhante.id).padStart(5, '0')}. Redirecionando...`);
+          setTimeout(() => { window.location.href = '/cidadao/minhas-ocorrencias.html'; }, 1500);
+          return;
+        }
+        btn.disabled = false;
+        btn.textContent = 'Apoiar esta ocorrência';
+        fecharModalApoio();
+        if (erro.status === 409) {
+          mostrarErro('Você já apoiou esta ocorrência anteriormente.');
+        } else {
+          mostrarErro('Não foi possível registrar o apoio. Tente novamente.');
+        }
+      }
+    });
+
+    document.getElementById('btn-registrar-nova').addEventListener('click', () => {
+      fecharModalApoio();
+      criarOcorrencia();
+    });
+
+    document.getElementById('btn-fechar-modal').addEventListener('click', fecharModalApoio);
+
+    // --- Criação da ocorrência ---
+    async function criarOcorrencia() {
       btnRegistrar.disabled = true;
 
-      const cidadeValor = document.getElementById('cidade').value.trim();
-      if (cidadeValor.toLowerCase() !== 'recife') {
-        mostrarErro('Só é possível registrar ocorrências no município do Recife.');
-        btnRegistrar.disabled = false;
-        return;
+      // Fallback: verificação por endereço quando não há coordenadas GPS
+      if (!coordenadas.latitude || !coordenadas.longitude) {
+        const tipoSelecionado = Number(form.querySelector('input[name="tipoOcorrencia"]:checked').value);
+        const tipoNome = TipoOcorrencia[tipoSelecionado]?.nome;
+        const rua = document.getElementById('rua').value.trim();
+        const bairro = document.getElementById('bairro').value.trim();
+        if (rua && bairro && tipoNome) {
+          try {
+            btnRegistrar.textContent = 'Verificando...';
+            const semelhante = await Api.get(
+              `${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/verificar?tipo=${tipoNome}&rua=${encodeURIComponent(rua)}&bairro=${encodeURIComponent(bairro)}`,
+              true
+            );
+            if (semelhante) {
+              btnRegistrar.disabled = false;
+              btnRegistrar.textContent = 'Registrar ocorrência';
+              abrirModalApoio(semelhante);
+              return;
+            }
+          } catch (erro) {
+            if (erro.status !== 404) {
+              console.warn('Verificação por endereço falhou, prosseguindo:', erro.message);
+            }
+          }
+        }
       }
 
-      // Etapa 1 e 2: obter presigned URL e fazer upload direto no S3
       let fotoOcorrencia = [];
       if (fotos.length > 0) {
         btnRegistrar.textContent = `Enviando ${fotos.length} foto(s)...`;
@@ -707,7 +897,6 @@
         }
       }
 
-      // Etapa 3: criar a ocorrência com a referência das fotos
       btnRegistrar.textContent = 'Registrando...';
       const tipoOcorrencia = Number(form.querySelector('input[name="tipoOcorrencia"]:checked').value);
       const cep = document.getElementById('cep').value.replace(/\D/g, '');
@@ -731,12 +920,23 @@
       try {
         const resposta = await Api.post(`${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias`, payload);
         mostrarSucesso(`Ocorrência registrada com sucesso! Protocolo #${String(resposta.id).padStart(5, '0')}. Redirecionando...`);
-        setTimeout(() => {
-          window.location.href = '/cidadao/minhas-ocorrencias.html';
-        }, 1500);
+        setTimeout(() => { window.location.href = '/cidadao/minhas-ocorrencias.html'; }, 1500);
       } catch (erro) {
         console.error(erro);
         if (erro.status === 400) {
+          // Tenta buscar a ocorrência duplicada para mostrar o modal de apoio
+          try {
+            const semelhante = await Api.get(
+              `${CONFIG.REPORT_SERVICE_URL}/api/ocorrencias/verificar?tipo=${TipoOcorrencia[tipoOcorrencia]?.nome}&rua=${encodeURIComponent(payload.enderecoOcorrencia.rua)}&bairro=${encodeURIComponent(payload.enderecoOcorrencia.bairro)}`,
+              true
+            );
+            if (semelhante) {
+              btnRegistrar.disabled = false;
+              btnRegistrar.textContent = 'Registrar ocorrência';
+              abrirModalApoio(semelhante);
+              return;
+            }
+          } catch (e) { /* se não encontrar, cai no erro genérico abaixo */ }
           mostrarErro(erro.message || 'Já existe uma ocorrência pendente do mesmo tipo neste local.');
         } else if (erro.status === 401) {
           mostrarErro('Sua sessão expirou. Faça login novamente.');
@@ -749,6 +949,44 @@
         btnRegistrar.disabled = false;
         btnRegistrar.textContent = 'Registrar ocorrência';
       }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      areaMensagem.innerHTML = '';
+      btnRegistrar.disabled = true;
+
+      const cidadeValor = document.getElementById('cidade').value.trim();
+      if (cidadeValor.toLowerCase() !== 'recife') {
+        mostrarErro('Só é possível registrar ocorrências no município do Recife.');
+        btnRegistrar.disabled = false;
+        return;
+      }
+
+      // Verifica ocorrências semelhantes ativas próximas (só com coordenadas)
+      if (coordenadas.latitude && coordenadas.longitude) {
+        const tipoSelecionado = Number(form.querySelector('input[name="tipoOcorrencia"]:checked').value);
+        try {
+          btnRegistrar.textContent = 'Verificando...';
+          const proximas = await Api.get(
+            `${CONFIG.GEO_SERVICE_URL}/api/geo/ocorrencias/raio?lat=${coordenadas.latitude}&lng=${coordenadas.longitude}&raioMetros=150`,
+            true
+          );
+          const semelhante = (proximas || []).find(oc =>
+            oc.tipo === tipoSelecionado && oc.status !== 2 && oc.status !== 3
+          );
+          if (semelhante) {
+            btnRegistrar.disabled = false;
+            btnRegistrar.textContent = 'Registrar ocorrência';
+            abrirModalApoio(semelhante);
+            return;
+          }
+        } catch (erro) {
+          console.warn('Verificação de duplicatas falhou, prosseguindo:', erro.message);
+        }
+      }
+
+      await criarOcorrencia();
     });
   </script>
 </body>
