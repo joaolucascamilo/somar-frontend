@@ -485,13 +485,13 @@
       </div>
 
       <div class="bloco-form">
-        <h3>3. Fotos</h3>
+        <h3>3. Fotos <span style="color:#DC2626; font-weight:700;" title="Campo obrigatório">*</span></h3>
         <label class="zona-fotos" id="zona-fotos">
           <input type="file" id="input-fotos" accept="image/*" multiple>
           <span style="font-size: 1.6rem; display:block; margin-bottom: 8px;">📷</span>
           Toque para selecionar fotos ou arraste aqui
         </label>
-        <p class="limite-fotos" id="limite-fotos">Máximo de 2 fotos</p>
+        <p class="limite-fotos" id="limite-fotos">Obrigatório · Máximo de 2 fotos</p>
         <div class="lista-fotos-preview" id="lista-fotos-preview"></div>
       </div>
 
@@ -740,7 +740,7 @@
         zonaFotos.classList.remove('zona-fotos-oculta');
         const restantes = MAX_FOTOS - fotos.length;
         limiteFotos.textContent = fotos.length === 0
-          ? 'Máximo de 2 fotos'
+          ? 'Obrigatório · Máximo de 2 fotos'
           : `${fotos.length}/2 foto(s) adicionada(s). Você pode adicionar mais ${restantes}.`;
         limiteFotos.classList.remove('atingido');
       }
@@ -960,6 +960,13 @@
       if (cidadeValor.toLowerCase() !== 'recife') {
         mostrarErro('Só é possível registrar ocorrências no município do Recife.');
         btnRegistrar.disabled = false;
+        return;
+      }
+
+      if (fotos.length === 0) {
+        mostrarErro('Adicione pelo menos uma foto para registrar a ocorrência.');
+        btnRegistrar.disabled = false;
+        document.getElementById('zona-fotos').scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
 
