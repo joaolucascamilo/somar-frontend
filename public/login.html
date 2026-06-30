@@ -111,6 +111,35 @@
       areaMensagem.innerHTML = `<div class="sucesso-form">${msg}</div>`;
     }
 
+    function mostrarErroEmailNaoVerificado(email) {
+      areaMensagem.innerHTML = `
+        <div class="aviso-form">
+          E-mail não verificado. Verifique sua caixa de entrada e clique no link de confirmação.
+          <div style="margin-top:10px;">
+            <button type="button" id="btn-reenviar-verificacao" class="btn btn-perigo btn-bloco">Reenviar e-mail de confirmação</button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('btn-reenviar-verificacao').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.textContent = 'Enviando...';
+
+        try {
+          await Api.post(
+            `${CONFIG.USER_SERVICE_URL}/api/auth/reenviar-verificacao`,
+            { email },
+            false
+          );
+          mostrarSucesso('Se este e-mail estiver cadastrado e pendente de verificação, você receberá um novo link em breve.');
+        } catch (erro) {
+          console.error(erro);
+          mostrarErro('Não foi possível reenviar o e-mail. Tente novamente em alguns instantes.');
+        }
+      });
+    }
+
     const msgSessao = sessionStorage.getItem('somar_msg_sucesso');
     if (msgSessao) {
       mostrarSucesso(msgSessao);
@@ -167,10 +196,10 @@
 
       } catch (erro) {
         console.error(erro);
-        if (erro.status === 401 || erro.status === 403) {
+        if (erro.message && erro.message.includes('não verificado')) {
+          mostrarErroEmailNaoVerificado(email);
+        } else if (erro.status === 401 || erro.status === 403 || erro.status === 400) {
           mostrarErro('E-mail ou senha incorretos.');
-        } else if (erro.status === 500 && erro.message && erro.message.includes('não verificado')) {
-          mostrarErro('E-mail não verificado. Verifique sua caixa de entrada e clique no link de confirmação.');
         } else if (erro.status === 0) {
           mostrarErro(erro.message);
         } else {
