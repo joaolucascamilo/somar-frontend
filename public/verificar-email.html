@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificar e-mail — SOMAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/styles.css">
+  <style>
+    .tela-auth {
+      min-height: calc(100vh - 200px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+    }
+    .cartao-auth {
+      width: 100%;
+      max-width: 440px;
+      background: #fff;
+      border: 1px solid #e3ddd0;
+      border-radius: 6px;
+      padding: 40px 36px;
+      box-shadow: var(--sombra-card);
+      text-align: center;
+    }
+    .cartao-auth .eyebrow {
+      font-family: var(--fonte-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--amarelo-sinal-escuro);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .cartao-auth h1 {
+      font-size: 1.6rem;
+      margin-bottom: 26px;
+    }
+    .rodape-auth {
+      margin-top: 22px;
+      font-size: 0.9rem;
+      color: var(--grafite-600);
+    }
+    .rodape-auth a {
+      color: var(--amarelo-sinal-escuro);
+      font-weight: 600;
+    }
+    .verificando {
+      color: var(--grafite-600);
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 480px) {
+      .tela-auth { padding: 32px 0; align-items: flex-start; }
+      .cartao-auth { padding: 28px 20px; border-radius: 0; border-left: none; border-right: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar-root"></div>
+
+  <main class="tela-auth">
+    <div class="cartao-auth">
+      <span class="eyebrow">Confirmação de conta</span>
+      <h1>Verificação de e-mail</h1>
+
+      <div id="area-mensagem">
+        <p class="verificando">Verificando seu e-mail...</p>
+      </div>
+
+      <div id="rodape-auth" class="rodape-auth" style="display:none"></div>
+    </div>
+  </main>
+
+  <script src="/shared/config.js"></script>
+  <script src="/shared/api.js"></script>
+  <script src="/shared/navbar.js"></script>
+  <script>
+    montarNavbar('');
+
+    const areaMensagem = document.getElementById('area-mensagem');
+    const rodapeAuth = document.getElementById('rodape-auth');
+
+    function mostrarErro(msg) {
+      areaMensagem.innerHTML = `<div class="aviso-form">${msg}</div>`;
+      rodapeAuth.innerHTML = `Quer tentar de novo? <a href="/public/cadastro.html">Fazer cadastro</a>`;
+      rodapeAuth.style.display = 'block';
+    }
+
+    async function verificarEmail() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+
+      if (!token) {
+        mostrarErro('Link inválido. Nenhum token encontrado.');
+        return;
+      }
+
+      try {
+        await Api.get(
+          `${CONFIG.USER_SERVICE_URL}/api/auth/verificar-email?token=${encodeURIComponent(token)}`,
+          false
+        );
+
+        sessionStorage.setItem('somar_msg_sucesso', 'E-mail verificado com sucesso! Agora você pode fazer login.');
+        window.location.href = '/public/login.html';
+
+      } catch (erro) {
+        console.error(erro);
+        mostrarErro('Link inválido ou expirado. Faça o cadastro novamente.');
+      }
+    }
+
+    verificarEmail();
+  </script>
+</body>
+</html>

@@ -104,6 +104,15 @@
     function mostrarErro(msg) {
       areaMensagem.innerHTML = `<div class="aviso-form">${msg}</div>`;
     }
+    function mostrarSucesso(msg) {
+      areaMensagem.innerHTML = `<div class="sucesso-form">${msg}</div>`;
+    }
+
+    const msgSessao = sessionStorage.getItem('somar_msg_sucesso');
+    if (msgSessao) {
+      mostrarSucesso(msgSessao);
+      sessionStorage.removeItem('somar_msg_sucesso');
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -157,6 +166,8 @@
         console.error(erro);
         if (erro.status === 401 || erro.status === 403) {
           mostrarErro('E-mail ou senha incorretos.');
+        } else if (erro.status === 500 && erro.message && erro.message.includes('não verificado')) {
+          mostrarErro('E-mail não verificado. Verifique sua caixa de entrada e clique no link de confirmação.');
         } else if (erro.status === 0) {
           mostrarErro(erro.message);
         } else {

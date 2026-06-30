@@ -132,10 +132,8 @@
           false
         );
 
-        mostrarSucesso('Conta criada com sucesso! Redirecionando para o login...');
-        setTimeout(() => {
-          window.location.href = '/public/login.html';
-        }, 1200);
+        mostrarSucesso('Cadastro realizado! Verifique seu e-mail para ativar a conta.');
+        form.style.display = 'none';
 
       } catch (erro) {
         console.error(erro);
